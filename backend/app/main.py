@@ -5,4 +5,4 @@ app = FastAPI()
 
 @app.get("/tt/{q}")
 def tt(q: int): 
-    return(q)
+    return(q) 

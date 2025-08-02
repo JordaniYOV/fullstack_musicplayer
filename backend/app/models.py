@@ -1,13 +1,13 @@
+import uuid
 from pydantic import EmailStr
-from sqlmodel import SQLModel, Field
+from sqlmodel import Relationship, SQLModel, Field
 
 # User's Models
 class UserBase(SQLModel):
-    nick_name: str | None = Field(default=None, max_length=255) 
+    full_name: str | None = Field(default=None, max_length=255) 
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
-    is_artist: bool = False
 
 # Properties to receive via API on creation
 class UserCreate(UserBase):
@@ -18,6 +18,25 @@ class UserRegister(SQlModel):
     password: str = Field(min_length=8, max_length=40)
     full_name: str | None = Field(default=None, max_length=255)
 
-#
+# Properties to reecieve via API on update, all are optional
+class UserUpdate(UserBase):
+    email: EmailStr | None = Field(default=None, max_length=255)
+    password: str | None = Field(default=None, min_length=8, max_length=255)
+
+class UserUpdateMe(SQLModel):
+    full_name: str | None = Field(default=None, max_length=255)
+    email: EmailStr | None = Field(default=None, max_length=255)
+
+class UpdatePassword(SQLModel):
+    current_password: str = Field(min_length=8, max_length=40)
+    new_password: str = Field(min_length=8, max_length=40)
+
+# DB model
+class User(UserBase, table=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    hashed_password: str 
+    playlists: list["Playlist"] = Relationship(back_populates="owner", cascade_delete=True)
+
+
 
 

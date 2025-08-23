@@ -1,8 +1,5 @@
+from core.db import init_db
 
-from fastapi import FastAPI
 
-app = FastAPI()
-
-@app.get("/tt/{q}")
-def tt(q: int): 
-    return(q) 
+if __name__ == "__main__": 
+    init_db()

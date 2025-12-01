@@ -41,6 +41,9 @@ class User(UserBase, table=True):
     playlists: list["Playlist"] = Relationship(back_populates="owner")
     albums: list["Album"] | None = Field(default=None, sa_column=Column(JSON))
 
+class CurrentUser(UserBase):
+    id: uuid.UUID
+
 #Artist's models
 class ArtistBase(SQLModel):
     name: str = Field(min_length=1, max_length=255)
@@ -112,4 +115,5 @@ class Playlist(PlaylistBase, table=True):
 class PlaylistPublic(PlaylistBase):
     pass
 
-
+class Message(SQLModel):
+    message: str

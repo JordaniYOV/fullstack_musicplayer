@@ -27,6 +27,8 @@ def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any:
     session.refresh(db_user)
     return db_user
 
+
+
 def get_user_by_email(*, session: Session, email: str) -> User | None: 
     statement = select(User).where(User.email == email)
     session_user = session.exec(statement).first()
@@ -39,6 +41,10 @@ def authenticate(*, session: Session, email: str, password: str) -> User | None:
     if not verify_password(password, db_user.hashed_password):
         return None
     return db_user
+
+def delete_user(*, session: Session, user: User):
+    db_user = get_user_by_email(session=session, email=user.email)
+    
 
 
 

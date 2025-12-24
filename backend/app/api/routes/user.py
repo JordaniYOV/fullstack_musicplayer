@@ -3,13 +3,13 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.core.security import verify_password, get_password_hash
-from app.models import UserRegister, UserCreate, UpdatePassword, Message, CurrentUser
-from app.api.deps import SessionDep
+from app.models import UserRegister, UserCreate, UpdatePassword, Message, UserPublic
+from app.api.deps import CurrentUser, SessionDep
 from app import crud
 router = APIRouter(prefix="/user", tags=["users"])
 
 
-@router.post('/signup')
+@router.post('/signup', response_model=UserPublic)
 def register_user(session: SessionDep, user_in: UserRegister) -> Any:
     user = crud.get_user_by_email(session=session, email=user_in.email)
     if user: 

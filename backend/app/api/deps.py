@@ -15,7 +15,7 @@ from app.core import security
 
 
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
+    tokenUrl="/login/access-token"
 )
 
 def get_db() -> Generator[Session, None, None]:

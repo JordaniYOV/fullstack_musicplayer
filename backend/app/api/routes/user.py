@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.core.security import verify_password, get_password_hash
-from app.models import UserRegister, UserCreate, UpdatePassword, Message, UserPublic
+from app.models import UserRegister, UserCreate, UpdatePassword, Message, UserPublic, UserUpdateMe
 from app.api.deps import CurrentUser, SessionDep
 from app import crud
 router = APIRouter(prefix="/user", tags=["users"])
@@ -39,3 +39,36 @@ def update_password_me(
     session.add(current_user)
     session.commit()
     return Message(message="Password updated successfully")
+
+@router.patch("/me/update", response_model=UserPublic)
+def update_info(
+    *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUser
+) -> Any: 
+    """
+    Update email and name
+    """
+    if user_in.email: 
+        existing_user = crud.get_user_by_email(session=session, email=user_in.email)
+        if existing_user and existing_user.id != current_user.id: 
+            raise HTTPException(
+                status_code=409, detail="User with this email already extists"
+            )
+    
+    user_data = user_in.model_dump(exclude_unset=True)
+    current_user.sqlmodel_update(user_data)
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user
+
+@router.delete("/me/delete")
+def delete_me(
+    *, session: SessionDep, current_user: CurrentUser
+) -> Any: 
+    """
+    delete my account
+    """
+    session.delete(current_user)
+    session.commit()
+    return Message(message="Your acc was deleted")
+    

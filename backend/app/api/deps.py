@@ -1,7 +1,8 @@
 from collections.abc import Generator
 from typing import Annotated
 
-from sqlmodel import Session
+
+from sqlalchemy.ext.asyncio.session import AsyncSession
 from fastapi import Depends, HTTPException, status
 import jwt
 from app.core.db import engine
@@ -18,11 +19,11 @@ reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl="/login/access-token"
 )
 
-def get_db() -> Generator[Session, None, None]:
-    with Session(engine) as session: 
+async def get_db() -> Generator[AsyncSession, None, None]:
+    async with AsyncSession(engine) as session: 
         yield session
 
-SessionDep = Annotated[Session, Depends(get_db)]
+SessionDep = Annotated[AsyncSession, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
 
 

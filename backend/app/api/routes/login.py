@@ -16,14 +16,14 @@ from app.core.config import settings
 router = APIRouter(tags=['login'])
 
 @router.post("/login/access-token")
-def login_access_token(
+async def login_access_token(
     session: SessionDep, form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
     """
     login with Oauth2, get an access token
     """
 
-    user = crud.authenticate(
+    user = await crud.authenticate(
         session=session, email=form_data.username, password=form_data.password
     )
     if not user:

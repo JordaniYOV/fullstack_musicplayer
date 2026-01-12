@@ -4,61 +4,44 @@ from typing import Annotated
 
 from fastapi import APIRouter, UploadFile, File
 
-from pydub import AudioSegment
-import io
-
 from app.api.deps import SessionDep
-from app.models import Album, Track, Artist
+from app.models import Album, Artist,  Message
+from app.api.utils import add_track
 
-router = APIRouter()
+router = APIRouter(tags=['admin'])
 
 @router.post('/track')
 async def upload_tracks(session: SessionDep, 
-                files: Annotated[list[UploadFile], File(description="To add whole album or sibgle track")],
+                tracks: Annotated[list[UploadFile], File(description="To add whole album or sibgle track")],
                 artist_name: str, 
                 album_name: str,
-                album_cover: UploadFile = None,
+                album_cover: UploadFile | None = None,
                 year_release:  int = None
 ):
 
     statement = select(Album).where(Album.album_name == album_name)
-    album = session.exec(statement).first()
+    album_obj = await session.execute(statement)
+    album = album_obj.scalar_one_or_none()
     if album is not None: 
-        album_id = album.id
+        await add_track(session=session, track_files=tracks, album_id=album.id)
+        return Message(message=f"Album {album.album_name} already exists, tracks added to that album {album.id}")
     else:
         cover = await album_cover.read()
         cover_type = album_cover.content_type
-        statement = select(Artist)
-        artist = session.exec(statement).first()
+        artist_obj = await session.execute(select(Artist))
+        artist = artist_obj.scalar_one_or_none()
         album = Album(
             album_name=album_name, 
             album_cover=cover,
             image_type=cover_type,
-            total_tracks=len(files), 
+            total_tracks=len(tracks), 
             year_release=year_release,
             artist_id=artist.id
         )
         session.add(album)
-        session.flush()
-
-    for file in files: 
-        track_name = file.filename
-        track_size = file.size
-        track_type =file.content_type
-        content = await file.read()
-        audio = AudioSegment.from_file(io.BytesIO(content))
-        duration = audio.duration_seconds
-        
-        track = Track(
-            track_name=track_name, 
-            duration_sec=duration, 
-            audio_file=content, 
-            audio_type=track_type, 
-            audio_size=track_size, 
-            album_id=album.id
-        )
-        session.add(track)
-    session.commit()
+        await session.flush()
+        await add_track(session=session, track_files=tracks, album_id=album.id)
+    
 
 @router.post('/artist')
 async def add_artist(session: SessionDep,
@@ -79,11 +62,12 @@ async def add_artist(session: SessionDep,
         monthly_listeners=monthly_listeners,
     )
     session.add(artist)
-    session.commit()
+    await session.commit()
 
 @router.delete('/delete_album')
-def delete_album(session: SessionDep, name): 
+async def delete_album(session: SessionDep, name): 
     statement = select(Album).where(Album.album_name == name)
-    album = session.exec(statement).first()
-    session.delete(album)
-    session.commit() 
+    album_obj = await session.execute(statement)
+    album = album_obj.scalar_one_or_none()
+    await session.delete(album)
+    await session.commit() 

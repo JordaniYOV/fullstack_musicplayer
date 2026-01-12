@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
 
     # API_V1_STR: str = "/api/v1"
-    DB_URL: str = f"postgresql://postgres:0508@localhost:5432/music"
+    DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
 
 
 settings = Settings()

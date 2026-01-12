@@ -1,4 +1,5 @@
 from datetime import datetime
+from tkinter import CASCADE
 import uuid
 
 from pydantic import EmailStr
@@ -68,7 +69,7 @@ class TrackBase(SQLModel):
     audio_file: bytes 
     audio_type: str 
     audio_size: int
-    album_id: uuid.UUID = Field(foreign_key="album.id")
+    album_id: uuid.UUID = Field(foreign_key="album.id", ondelete=CASCADE)
     
 class Track(TrackBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -89,7 +90,7 @@ class Album(AlbumBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     artist_id: uuid.UUID = Field(foreign_key="artist.id")
     artist: "Artist" = Relationship(back_populates="albums")
-    tracks: list["Track"] = Relationship(back_populates="album")
+    tracks: list["Track"] = Relationship(back_populates="album", cascade_delete=True)
 
 #Conecting model for tracks in playlists 
 class PlaylistTrack(SQLModel, table=True):

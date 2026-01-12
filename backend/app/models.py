@@ -1,6 +1,9 @@
-import datetime
+from datetime import datetime
 import uuid
+
 from pydantic import EmailStr
+from pydantic.types import condecimal
+
 from sqlmodel import Relationship, SQLModel, Field, JSON, Column
 
 
@@ -46,9 +49,12 @@ class UserPublic(UserBase):
 
 #Artist's models
 class ArtistBase(SQLModel):
+    photo: bytes 
+    image_type: str
     name: str = Field(min_length=1, max_length=255)
     bio: str | None = Field(default=None, max_length=2000)
     verified: bool = False
+    monthly_listeners: int 
 
 #DB Model 
 class Artist(ArtistBase, table=True):
@@ -57,20 +63,26 @@ class Artist(ArtistBase, table=True):
 
 #Track's model
 class TrackBase(SQLModel):
-    name: str = Field(min_length=1, max_length=255)
-    duraton_sec: int = Field(ge=1)
-    audio_url: str
-
+    track_name: str = Field(min_length=1, max_length=255)
+    duration_sec: int = Field(ge=1)
+    audio_file: bytes 
+    audio_type: str 
+    audio_size: int
+    album_id: uuid.UUID = Field(foreign_key="album.id")
+    
 class Track(TrackBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    album_id: uuid.UUID = Field(foreign_key="album.id")
+    created_at: datetime = Field(default_factory=datetime.now) 
     album: "Album" = Relationship(back_populates="tracks")
     playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
 
 #Album's model
 class AlbumBase(SQLModel):
-    name: str = Field(min_length=1, max_length=255)
-    # release_year: int = Field(ge=1900, le=datetime.now().year)
+    album_name: str = Field(min_length=1, max_length=255)
+    album_cover: bytes 
+    image_type: str 
+    total_tracks: int 
+    year_release: int = Field(le=3000, ge=1000)
     
 #DB model
 class Album(AlbumBase, table=True):

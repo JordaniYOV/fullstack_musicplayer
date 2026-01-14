@@ -1,4 +1,4 @@
-from email.mime import audio
+
 from sqlmodel import select
 from typing import Annotated
 
@@ -10,7 +10,7 @@ from app.api.utils import add_track
 
 router = APIRouter(tags=['admin'])
 
-@router.post('/track')
+@router.post('/add/album-tracks')
 async def upload_tracks(session: SessionDep, 
                 tracks: Annotated[list[UploadFile], File(description="To add whole album or sibgle track")],
                 artist_name: str, 
@@ -43,7 +43,7 @@ async def upload_tracks(session: SessionDep,
         await add_track(session=session, track_files=tracks, album_id=album.id)
     
 
-@router.post('/artist')
+@router.post('/add/artist')
 async def add_artist(session: SessionDep,
                     photo: UploadFile, 
                     name: str, 

@@ -73,8 +73,7 @@ class TrackBase(SQLModel):
     
 class Track(TrackBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.now) 
-    album: "Album" = Relationship(back_populates="tracks")
+    created_at: datetime = Field(default_factory=datetime.now)     album: "Album" = Relationship(back_populates="tracks")
     playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
 
 #Album's model

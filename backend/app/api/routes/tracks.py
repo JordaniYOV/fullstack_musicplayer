@@ -11,24 +11,26 @@ from app.api.utils import add_track
 router = APIRouter(tags=['admin'])
 
 @router.post('/add/album-tracks')
-async def upload_tracks(session: SessionDep, 
-                tracks: Annotated[list[UploadFile], File(description="To add whole album or sibgle track")],
-                artist_name: str, 
-                album_name: str,
-                album_cover: UploadFile | None = None,
-                year_release:  int = None
+async def upload_tracks(
+    session: SessionDep, 
+    tracks: Annotated[list[UploadFile], File(description="To add whole album or sibgle track")],
+    artist_name: str, 
+    album_name: str,
+    album_cover: UploadFile | None = None,
+    year_release:  int = None
 ):
 
     statement = select(Album).where(Album.album_name == album_name)
     album_obj = await session.execute(statement)
     album = album_obj.scalar_one_or_none()
-    if album is not None: 
-        await add_track(session=session, track_files=tracks, album_id=album.id)
-        return Message(message=f"Album {album.album_name} already exists, tracks added to that album {album.id}")
+
+    if album != None: 
+        answer = await add_track(session=session, track_files=tracks, album_id=album.id, album_existed=True, album_name=album.album_name)
+        return answer
     else:
         cover = await album_cover.read()
         cover_type = album_cover.content_type
-        artist_obj = await session.execute(select(Artist))
+        artist_obj = await session.execute(select(Artist).where(Artist.name == artist_name))
         artist = artist_obj.scalar_one_or_none()
         album = Album(
             album_name=album_name, 
@@ -40,7 +42,8 @@ async def upload_tracks(session: SessionDep,
         )
         session.add(album)
         await session.flush()
-        await add_track(session=session, track_files=tracks, album_id=album.id)
+        answer = await add_track(session=session, track_files=tracks, album_id=album.id, album_existed=False, album_name=album.album_name)
+        return answer
     
 
 @router.post('/add/artist')
@@ -71,3 +74,4 @@ async def delete_album(session: SessionDep, name):
     album = album_obj.scalar_one_or_none()
     await session.delete(album)
     await session.commit() 
+    return Message(message=f"Album {name} was deleted and all releated tracks")

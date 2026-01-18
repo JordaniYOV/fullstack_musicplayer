@@ -3,7 +3,6 @@ from tkinter import CASCADE
 import uuid
 
 from pydantic import EmailStr
-from pydantic.types import condecimal
 
 from sqlmodel import Relationship, SQLModel, Field, JSON, Column
 
@@ -63,19 +62,38 @@ class Artist(ArtistBase, table=True):
     albums: list["Album"] = Relationship(back_populates="artist")
 
 #Track's model
-class TrackBase(SQLModel):
+    
+class Track(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track_name: str = Field(min_length=1, max_length=255)
     duration_sec: int = Field(ge=1)
+    created_at: datetime = Field(default_factory=datetime.now)     
+    track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
+    track_medium: "TrackMedium" = Relationship(back_populates="track", cascade_delete=True)
+    track_high: "TrackHigh" = Relationship(back_populates="track", cascade_delete=True)
+    album: "Album" = Relationship(back_populates="tracks")
+    album_id: uuid.UUID = Field(foreign_key="album.id", ondelete=CASCADE)
+    playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
+    
+class TrackBase(SQLModel):
     audio_file: bytes 
     audio_type: str 
     audio_size: int
-    album_id: uuid.UUID = Field(foreign_key="album.id", ondelete=CASCADE)
+    track_id: uuid.UUID = Field(foreign_key="track.id", ondelete=CASCADE)
     
-class Track(TrackBase, table=True):
+class TrackLow(TrackBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.now)     album: "Album" = Relationship(back_populates="tracks")
-    playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
+    track: "Track" = Relationship(back_populates='track_low')
 
+class TrackMedium(TrackBase, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    track: "Track" = Relationship(back_populates='track_medium')
+
+class TrackHigh(TrackBase, table=True): 
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    track: "Track" = Relationship(back_populates='track_high')
+
+    
 #Album's model
 class AlbumBase(SQLModel):
     album_name: str = Field(min_length=1, max_length=255)

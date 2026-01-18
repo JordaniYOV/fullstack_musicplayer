@@ -1,20 +1,22 @@
 from typing import Any
 import uuid
+
 from sqlmodel import Session, select
+from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.core.security import get_password_hash, verify_password
 from app.models import User, UserCreate, UserUpdate
 
-async def create_user(*, session: Session, user_create: UserCreate) -> User: 
+async def create_user(*, session: AsyncSession, user_create: UserCreate) -> User: 
     db_obj = User.model_validate(
         user_create, update={"hashed_password": get_password_hash(user_create.password)}
     )
     session.add(db_obj)
     await session.commit()
-    session.refresh(db_obj)
+    await session.refresh(db_obj)
     return db_obj
 
-async def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -> Any: 
+async def update_user(*, session: AsyncSession, db_user: User, user_in: UserUpdate) -> Any: 
     user_data = user_in.model_dump(exclude_unset=True)
     extra_data = {}
     if "password" in user_data: 
@@ -27,12 +29,13 @@ async def update_user(*, session: Session, db_user: User, user_in: UserUpdate) -
     session.refresh(db_user)
     return db_user
 
-async def get_user_by_email(*, session: Session, email: str) -> User | None: 
+async def get_user_by_email(*, session: AsyncSession, email: str) -> User | None: 
     statement = select(User).where(User.email == email)
-    session_user = await session.execute(statement).first()
+    session_user_obj = await session.execute(statement)
+    session_user = session_user_obj.scalar_one_or_none()
     return session_user
 
-async def authenticate(*, session: Session, email: str, password: str) -> User | None: 
+async def authenticate(*, session: AsyncSession, email: str, password: str) -> User | None: 
     db_user = await get_user_by_email(session=session, email=email)
     if not db_user: 
         return None

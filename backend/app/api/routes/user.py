@@ -58,7 +58,7 @@ async def update_info(
     current_user.sqlmodel_update(user_data)
     session.add(current_user)
     await session.commit()
-    session.refresh(current_user)
+    await session.refresh(current_user)
     return current_user
 
 @router.delete("/me/delete")
@@ -68,7 +68,7 @@ async def delete_me(
     """
     delete my account
     """
-    session.delete(current_user)
+    await session.delete(current_user)
     await session.commit()
     return Message(message="Your acc was deleted")
     

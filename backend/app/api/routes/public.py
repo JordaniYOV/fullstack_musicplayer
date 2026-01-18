@@ -16,6 +16,8 @@ async def get_album_tracks(session: SessionDep, album_id: str):
     album = album_obj.scalar_one_or_none()
     return album.tracks
 
-# @router.get('/album/trand/')
+# @router.get('/trand/song')
 # async def get_trand_albums(session: SessionDep): 
     
+# @router.get('trand/song')
+# async def get_trand_tracks(session: SessionDep): 

@@ -68,7 +68,9 @@ class Track(SQLModel, table=True):
     track_name: str = Field(min_length=1, max_length=255)
     duration_sec: int = Field(ge=1)
     created_at: datetime = Field(default_factory=datetime.now)    
-    weekly_listeners: int = Field(default=0)
+    weekly_listeners: int | None = Field(default=0)
+    monthly_listeners: int | None = Field(default=0)
+    all_time_listeners: int | None = Field(default=0)
     track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
     track_medium: "TrackMedium" = Relationship(back_populates="track", cascade_delete=True)
     track_high: "TrackHigh" = Relationship(back_populates="track", cascade_delete=True)
@@ -76,25 +78,33 @@ class Track(SQLModel, table=True):
     album_id: uuid.UUID = Field(foreign_key="album.id", ondelete=CASCADE)
     playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
     
-class TrackBase(SQLModel):
+class TrackQualityBase(SQLModel):
     audio_file: bytes 
     audio_type: str 
     audio_size: int
     track_id: uuid.UUID = Field(foreign_key="track.id", ondelete=CASCADE)
     
-class TrackLow(TrackBase, table=True):
+class TrackLow(TrackQualityBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track: "Track" = Relationship(back_populates='track_low')
 
-class TrackMedium(TrackBase, table=True):
+class TrackMedium(TrackQualityBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track: "Track" = Relationship(back_populates='track_medium')
 
-class TrackHigh(TrackBase, table=True): 
+class TrackHigh(TrackQualityBase, table=True): 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track: "Track" = Relationship(back_populates='track_high')
 
-    
+class PopularTracks(SQLModel, table=True): 
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    track_id: uuid.UUID = Field(foreign_key="track.id", ondelete=CASCADE)
+    period: str 
+    play_count: int 
+    calculated_at: datetime = Field(default_factory=datetime.now)
+    track: "Track" = Relationship(back_populates='popular_tracks')
+
+
 #Album's model
 class AlbumBase(SQLModel):
     album_name: str = Field(min_length=1, max_length=255)

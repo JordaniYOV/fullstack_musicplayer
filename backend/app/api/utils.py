@@ -9,6 +9,9 @@ import io
 import asyncio
 
 from app.models import Track, TrackHigh, TrackLow, TrackMedium, Message
+from ..core.redis.redis import redis_client
+from ..core.redis.cache import CacheService
+
 
 async def add_track(
         session: AsyncSession, 
@@ -68,12 +71,22 @@ async def add_track(
             session.add(track_high)
             session.add(track_medium)
             session.add(track_low)
-    await session.commit()
+    
 
-    if album_existed == True:
-        return Message(message=f"Album {album_name} already exists, tracks added to that album. {track_existed}")
-    else: 
-        return Message(message=f"Album {album_name} was created, tracks added to that album. {track_existed}")
+    redis = await redis_client.get_client()
+    cache_service = CacheService(redis)
+    answer = await cache_service.set(key='1', value='jhon')  
+    await session.commit()
+    data = await cache_service.get(key='2')
+    data1 = await cache_service.get(key='1')
+    await redis_client.close_pool()  
+    return data, data1
+
+
+    # if album_existed == True:
+    #     return Message(message=f"Album {album_name} already exists, tracks added to that album. {track_existed}")
+    # else: 
+    #     return Message(message=f"Album {album_name} was created, tracks added to that album. {track_existed}")
 
 
 # async def add_track_quality(session: AsyncSession,

@@ -1,12 +1,15 @@
+
 from collections.abc import Generator
-from typing import Annotated
+from typing import Annotated, AsyncGenerator
 
 
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from fastapi import Depends, HTTPException, status
 import jwt
+import redis.asyncio as redis
 from app.core.db import engine
 from app.models import TokenPayload, User
+from app.core.redis.redis import redis_client
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 from jwt.exceptions import InvalidTokenError
@@ -19,7 +22,7 @@ reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl="/login/access-token"
 )
 
-async def get_db() -> Generator[AsyncSession, None, None]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSession(engine) as session: 
         try:
             yield session
@@ -29,6 +32,18 @@ async def get_db() -> Generator[AsyncSession, None, None]:
             raise
         finally: 
             await session.close()
+
+async def get_redis() -> AsyncGenerator[redis.Redis, None]: 
+    """
+    Dependency to get redis client
+    Use to inject into endpoints
+    """
+    client = await redis_client.get_client()
+    
+    try: 
+        yield client
+    finally: 
+        pass
 
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]

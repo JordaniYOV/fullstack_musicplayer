@@ -71,6 +71,7 @@ class Track(SQLModel, table=True):
     weekly_listeners: int | None = Field(default=0)
     monthly_listeners: int | None = Field(default=0)
     all_time_listeners: int | None = Field(default=0)
+    popular_tracks: 'PopularTracks' = Relationship(back_populates="track")
     track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
     track_medium: "TrackMedium" = Relationship(back_populates="track", cascade_delete=True)
     track_high: "TrackHigh" = Relationship(back_populates="track", cascade_delete=True)

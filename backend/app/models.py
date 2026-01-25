@@ -54,7 +54,9 @@ class ArtistBase(SQLModel):
     name: str = Field(min_length=1, max_length=255)
     bio: str | None = Field(default=None, max_length=2000)
     verified: bool = False
-    monthly_listeners: int 
+    monthly_listeners: int | None = Field(default=0)
+    plays: int | None = Field(default=0)
+    followers: int | None = Field(default=0)
 
 #DB Model 
 class Artist(ArtistBase, table=True):
@@ -62,7 +64,6 @@ class Artist(ArtistBase, table=True):
     albums: list["Album"] = Relationship(back_populates="artist")
 
 #Track's model
-    
 class Track(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track_name: str = Field(min_length=1, max_length=255)
@@ -71,6 +72,8 @@ class Track(SQLModel, table=True):
     weekly_listeners: int | None = Field(default=0)
     monthly_listeners: int | None = Field(default=0)
     all_time_listeners: int | None = Field(default=0)
+    plays: int | None = Field(default=0)
+    likes: int | None = Field(default=0)
     popular_tracks: 'PopularTracks' = Relationship(back_populates="track")
     track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
     track_medium: "TrackMedium" = Relationship(back_populates="track", cascade_delete=True)

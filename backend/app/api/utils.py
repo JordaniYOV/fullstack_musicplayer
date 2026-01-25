@@ -11,6 +11,7 @@ import asyncio
 from app.models import Track, TrackHigh, TrackLow, TrackMedium, Message
 from ..core.redis.redis import redis_client
 from ..core.redis.cache import CacheService
+from ..core.redis.track_manager import TrackRedisManager
 
 
 async def add_track(
@@ -72,54 +73,19 @@ async def add_track(
             session.add(track_medium)
             session.add(track_low)
     
+            # track_dict = track.model_dump()
+            # redis = await redis_client.get_client()
+            # cache_service = TrackRedisManager(redis)
+            # await cache_service.add_track(track_dict)  
+            # data = await cache_service.get_track(f"track:{track.id}")
+            # await redis_client.close_pool()
+            await session.commit()
 
-    redis = await redis_client.get_client()
-    cache_service = CacheService(redis)
-    answer = await cache_service.set(key='1', value='jhon')  
-    await session.commit()
-    data = await cache_service.get(key='2')
-    data1 = await cache_service.get(key='1')
-    await redis_client.close_pool()  
-    return data, data1
+    if album_existed == True:
+        return Message(message=f"Album {album_name} already exists, tracks added to that album. {track_existed}")
+    else: 
+        return Message(message=f"Album {album_name} was created, tracks added to that album. {track_existed}")
 
-
-    # if album_existed == True:
-    #     return Message(message=f"Album {album_name} already exists, tracks added to that album. {track_existed}")
-    # else: 
-    #     return Message(message=f"Album {album_name} was created, tracks added to that album. {track_existed}")
-
-
-# async def add_track_quality(session: AsyncSession,
-#         content: bytes, 
-#         track_type: str, 
-#         track_size: int, 
-#         track_id: uuid.UUID,
-#         bitrate: int 
-# ):
-#     if bitrate <= 96: 
-#         track_low = TrackLow(
-#             audio_file=content,
-#             audio_type=track_type, 
-#             audio_size=track_size, 
-#             track_id=track_id, 
-#         )
-#         session.add(track_low)
-#     elif bitrate <= 160:
-#         track_medium = TrackMedium(
-#             audio_file=content, 
-#             audio_type=track_type, 
-#             audio_size=track_size, 
-#             track_id=track_id
-#         )
-#         session.add(track_medium)
-#     elif bitrate >= 320 or bitrate <= 320: 
-#         track_high = TrackHigh(
-#             audio_file=content, 
-#             audio_type=track_type, 
-#             audio_size=track_size, 
-#             track_id=track_id
-#         )
-#         session.add(track_high)
 
 def comprese_audio(audio, target_bitrate: str, duration: int) -> dict: 
     """

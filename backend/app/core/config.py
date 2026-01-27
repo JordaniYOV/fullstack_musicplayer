@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     cache_ttl: int = 3600
 
     # API_V1_STR: str = "/api/v1"
-    DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
+    # DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
+    DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/postgres"
 
 
 settings = Settings()

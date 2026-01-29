@@ -68,11 +68,11 @@ class Track(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track_name: str = Field(min_length=1, max_length=255)
     duration_sec: int = Field(ge=1)
-    created_at: datetime = Field(default_factory=datetime.now)    
-    weekly_listeners: int | None = Field(default=0)
-    monthly_listeners: int | None = Field(default=0)
-    all_time_listeners: int | None = Field(default=0)
-    plays: int | None = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.now)
+    daily_plays: int | None = Field(default=0)
+    weekly_plays: int | None = Field(default=0)
+    monthly_plays: int | None = Field(default=0)
+    all_time_plays: int | None = Field(default=0)
     likes: int | None = Field(default=0)
     popular_tracks: 'PopularTracks' = Relationship(back_populates="track")
     track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
@@ -82,6 +82,7 @@ class Track(SQLModel, table=True):
     album_id: uuid.UUID = Field(foreign_key="album.id", ondelete=CASCADE)
     playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
     
+
 class TrackQualityBase(SQLModel):
     audio_file: bytes 
     audio_type: str 

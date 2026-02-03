@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 from fastapi import Depends, HTTPException, status
 import jwt
 import redis.asyncio as redis
-from app.core.db import engine
+from app.core.db import async_engine
 from app.models import TokenPayload, User
 from app.core.redis.redis import redis_client
 from fastapi.security import OAuth2PasswordBearer
@@ -23,15 +23,8 @@ reusable_oauth2 = OAuth2PasswordBearer(
 )
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSession(engine) as session: 
-        try:
-            yield session
-            await session.commit()
-        except Exception: 
-            await session.rollback()
-            raise
-        finally: 
-            await session.close()
+    async with AsyncSession(async_engine) as session: 
+        yield session
 
 async def get_redis() -> AsyncGenerator[redis.Redis, None]: 
     """

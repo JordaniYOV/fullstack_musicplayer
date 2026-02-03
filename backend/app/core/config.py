@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    PROJECT_NAME: str = "Muse"
+
     SECRET_KEY: str = secrets.token_urlsafe(32)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -18,7 +20,8 @@ class Settings(BaseSettings):
 
     # API_V1_STR: str = "/api/v1"
     # DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
-    DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/postgres"
+    ASYNC_DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/postgres"
+    DB_URL: str = f"postgresql://postgres:1234@localhost:1234/postgres"
 
 
 settings = Settings()

@@ -1,5 +1,11 @@
-from core.db import init_db
+from fastapi import FastAPI
+
+from .core.config import settings
+from .api.main import api_router
+
+app = FastAPI(
+    title=settings.PROJECT_NAME, 
+)
 
 
-if __name__ == "__main__": 
-    init_db()
+app.include_router(api_router)

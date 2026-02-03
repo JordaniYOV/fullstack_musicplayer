@@ -93,7 +93,7 @@ class TrackRedisManager():
         stats = await self.redis.hgetall(track_key)
 
         track_info = { 
-            "track_id": track_key.split(":")[-1], 
+            "track_id": track_key, 
             **track, 
             **stats,
         }
@@ -110,11 +110,11 @@ class TrackRedisManager():
             track_keys = await self.redis.zrevrange(f"{self.popularity_key}:day", start=0, end=limit-1)
 
             return [await self.get_track(track_key) for track_key in track_keys]
-        if period == "week": 
+        elif period == "week": 
             track_keys = await self.redis.zrevrange(f"{self.popularity_key}:week", start=0, end=limit-1)
 
             return [await self.get_track(track_key) for track_key in track_keys]
-        if period == "month": 
+        elif period == "month": 
             track_keys = await self.redis.zrevrange(f"{self.popularity_key}:month", start=0, end=limit-1)
 
             return [await self.get_track(track_key) for track_key in track_keys]

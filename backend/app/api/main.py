@@ -1,12 +1,12 @@
 from app.api.routes import user, login, tracks, public
 
 
-from fastapi import FastAPI
+from fastapi import APIRouter
 
-app = FastAPI()
+api_router = APIRouter()
 
-app.include_router(user.router)
-app.include_router(login.router)
-app.include_router(tracks.router)
-app.include_router(public.router)
+api_router.include_router(user.router)
+api_router.include_router(login.router)
+api_router.include_router(tracks.router)
+api_router.include_router(public.router)
 

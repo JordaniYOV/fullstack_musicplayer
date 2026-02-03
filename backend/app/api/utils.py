@@ -41,7 +41,8 @@ async def add_track(
             track = Track(
                 track_name=track_name, 
                 duration_sec=duration, 
-                album_id=album_id
+                album_id=album_id, 
+                
             )
             session.add(track)
             await session.flush()

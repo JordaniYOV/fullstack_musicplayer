@@ -5,20 +5,20 @@ from fastapi import APIRouter, HTTPException
 from app.core.security import verify_password, get_password_hash
 from app.models import UserRegister, UserCreate, UpdatePassword, Message, UserPublic, UserUpdateMe
 from app.api.deps import CurrentUser, SessionDep
-from app import crud
+from app.crud import user
 router = APIRouter(prefix="/user", tags=["users"])
 
 
 @router.post('/signup', response_model=UserPublic)
 async def register_user(session: SessionDep, user_in: UserRegister) -> Any:
-    user = await crud.get_user_by_email(session=session, email=user_in.email)
+    user = await user.get_user_by_email(session=session, email=user_in.email)
     if user: 
         raise HTTPException(
             status_code=400, 
             detail="The user with this email already exists in the system",
         )    
     user_create = UserCreate.model_validate(user_in)
-    user = await crud.create_user(session=session, user_create=user_create)
+    user = await user.create_user(session=session, user_create=user_create)
     return user
 
 @router.patch("/me/password", response_model=Message)
@@ -48,7 +48,7 @@ async def update_info(
     Update email and name
     """
     if user_in.email: 
-        existing_user = await crud.get_user_by_email(session=session, email=user_in.email)
+        existing_user = await user.get_user_by_email(session=session, email=user_in.email)
         if existing_user and existing_user.id != current_user.id: 
             raise HTTPException(
                 status_code=409, detail="User with this email already extists"

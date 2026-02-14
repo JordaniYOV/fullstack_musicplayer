@@ -5,9 +5,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from datetime import timedelta
 
-from app import crud
+from app.crud import user
 from app.api.deps import SessionDep
-from app.crud import authenticate
+from app.crud.user import authenticate
 from app.models import Token
 from app.core import security
 from app.core.config import settings
@@ -23,7 +23,7 @@ async def login_access_token(
     login with Oauth2, get an access token
     """
 
-    user = await crud.authenticate(
+    user = await user.authenticate(
         session=session, email=form_data.username, password=form_data.password
     )
     if not user:

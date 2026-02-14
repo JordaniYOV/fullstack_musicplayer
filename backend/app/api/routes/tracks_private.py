@@ -7,7 +7,7 @@ from fastapi import APIRouter, UploadFile, File
 
 from app.api.deps import SessionDep
 from app.models import Album, Artist,  Message, Track
-from app.api.utils import add_track
+from app.crud.track import add_track
 
 router = APIRouter(tags=['admin'])
 
@@ -46,7 +46,6 @@ async def upload_tracks(
         answer = await add_track(session=session, track_files=tracks, album_id=album.id, album_existed=False, album_name=album.album_name)
         return answer
     
-
 @router.post('/add/artist')
 async def add_artist(session: SessionDep,
                     photo: UploadFile, 
@@ -79,25 +78,3 @@ async def delete_album(session: SessionDep, name: str):
     await session.delete(album)
     await session.commit() 
     return Message(message=f"Album {name} was deleted and all releated tracks")
-
-@router.patch('/track/add_plays')
-async def add_plays(session: SessionDep, plays: int, track_id: uuid.UUID, period: str): 
-    """
-    Increase plays on chosen period of time by given plays
-    """
-
-    statement = select(Track).where(Track.id == track_id)
-    track_obj = await session.execute(statement)
-    track = track_obj.scalar_one_or_none()
-
-    if period == "day": 
-        track.daily_plays += plays
-    elif period == "week": 
-        track.weekly_plays += plays
-    elif period == "month": 
-        track.monthly_plays += plays
-    else:
-        return Exception("Wrong or empty period")
-    
-    session.add(track)
-    await session.commit()

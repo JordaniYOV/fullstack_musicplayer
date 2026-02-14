@@ -64,16 +64,19 @@ class Artist(ArtistBase, table=True):
     albums: list["Album"] = Relationship(back_populates="artist")
 
 #Track's model
-class Track(SQLModel, table=True):
+class TrackBase(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track_name: str = Field(min_length=1, max_length=255)
     duration_sec: int = Field(ge=1)
-    created_at: datetime = Field(default_factory=datetime.now)
     daily_plays: int | None = Field(default=0)
     weekly_plays: int | None = Field(default=0)
     monthly_plays: int | None = Field(default=0)
     all_time_plays: int | None = Field(default=0)
     likes: int | None = Field(default=0)
+    # artist: str = Field(min_length=1, max_length=255)
+
+class Track(TrackBase, table=True):
+    created_at: datetime = Field(default_factory=datetime.now)
     popular_tracks: 'PopularTracks' = Relationship(back_populates="track")
     track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
     track_medium: "TrackMedium" = Relationship(back_populates="track", cascade_delete=True)
@@ -84,7 +87,7 @@ class Track(SQLModel, table=True):
     
 
 class TrackQualityBase(SQLModel):
-    audio_file: bytes 
+    audio_file: bytes
     audio_type: str 
     audio_size: int
     track_id: uuid.UUID = Field(foreign_key="track.id", ondelete=CASCADE)

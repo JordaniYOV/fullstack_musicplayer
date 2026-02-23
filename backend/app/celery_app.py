@@ -4,6 +4,8 @@ from celery import Celery
 from datetime import timedelta
 from .core.config import settings
 
+import asyncio
+
 celery_app = Celery(
     "celery_app", 
     broker = f"redis://{settings.redis_host}:{settings.redis_port}/0",

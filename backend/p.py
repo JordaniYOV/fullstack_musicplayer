@@ -4,16 +4,17 @@ from app.core.redis.track_manager import TrackRedisManager
 from app.tasks.update_popular_tracks import update_list_task
 from app.api.deps import SessionDep
 
-async def test(): 
+# async def test(): 
 
-    redis = await redis_client.get_client()
+#     redis = await redis_client.get_client()
 
-    service = TrackRedisManager(redis)
+#     service = TrackRedisManager(redis)
 
-    answer = await service.get_popular_track(period='day', limit=5)
+#     answer = await service.get_popular_track(period='day', limit=5)
 
-    print(answer)
+#     print(answer)
 
 if __name__ == '__main__': 
-    asyncio.run(test())
-    # update_list_task.delay('day', 5)
+    # asyncio.run(test())
+    update_list_task.delay('day', 10)
+    print("gay")

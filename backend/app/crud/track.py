@@ -17,7 +17,8 @@ async def add_track(
         track_files: list[UploadFile], 
         album_id: uuid.UUID,
         album_existed: bool, 
-        album_name: str
+        album_name: str,
+        artist: str,
 ): 
     track_existed = ""
 
@@ -40,6 +41,7 @@ async def add_track(
                 track_name = track_name, 
                 duration_sec = duration, 
                 album_id = album_id,
+                artist = artist,
             )
 
             session.add(track)
@@ -63,7 +65,7 @@ async def add_track(
             )
             track_low = TrackLow(
                 audio_file=track_l["audio_file"], 
-                audio_size=track_l["audio_szie"], 
+                audio_size=track_l["audio_size"], 
                 audio_type=track_type, 
                 track_id=track.id
             )

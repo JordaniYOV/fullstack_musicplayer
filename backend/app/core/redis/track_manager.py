@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict
+import uuid
 
 import redis.asyncio as redis
 
@@ -10,6 +11,7 @@ class TrackRedisManager():
         self.redis = redis
         self.popularity_key = "track:popularity"
         self.track_key = "track"
+        self.album_key = "album"
 
     async def add_artist(self, artist_data: Dict[str, Any]) -> bool: 
         """
@@ -42,7 +44,38 @@ class TrackRedisManager():
 
         await self.redis.zadd("artist:popularity", {artist_key: plays})
 
-    async def add_track(self, track_data: Dict[str, Any]) -> bool:
+    # async def get_album(self, album_key: str):
+    #     if not await self.redis.exists(album_key): 
+    #         return None
+        
+    #     album = await self.redis.hgetall(album_key)
+
+    #     data = { 
+    #         "track_id": album_key[6:], 
+    #         **album
+    #     }
+
+    #     return data
+
+
+
+    # async def add_album_of_populartrack(self, album: Dict[str, any]):
+    #     album_id = album.get("id")
+
+    #     album_key = f"{self.album_key}:{album_id}"
+
+    #     if await self.get_album(album_key) is not None:
+    #         return None
+
+    #     data = {
+    #         "album_cover": album.get("album_cover"),
+    #         "album_name": album.get("album_name"),
+    #         "artist": album.get("artist_name")
+    #     }
+
+    #     await self.redis.hset(album_key, mapping=data)
+
+    async def add_track(self, track_data: Dict[str, Any], album_dict: Dict[str, Any]) -> bool:
         """
         Add popular tracks
         """
@@ -54,11 +87,16 @@ class TrackRedisManager():
         data = {
             "track_name": track_data.get("track_name"),
             "duration_sec": track_data.get("duration_sec"), 
-            "album_id": str(track_data.get("album_id")), 
-
+            "album_id": str(track_data.get("album_id")),
+            "likes": track_data.get("likes"),
+            "all_time_plays": track_data.get("all_time_plays"),
+            "artist": track_data.get("artist"), 
+            "cover":str(album_dict.get("cover_id"))
         }
 
         await self.redis.hset(track_key, mapping=data)
+
+        # await self.add_album_of_populartrack(album_dict)
 
         # stats_key = f"{track_key}:stats"
         # initial_stats = { 
@@ -90,12 +128,12 @@ class TrackRedisManager():
 
         track = await self.redis.hgetall(track_key)
 
-        stats = await self.redis.hgetall(track_key)
+        # stats = await self.redis.hgetall(track_key)
 
         track_info = { 
-            "track_id": track_key, 
+            "track_id": track_key[6:], 
             **track, 
-            **stats,
+            # **stats,
         }
 
         return track_info

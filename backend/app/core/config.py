@@ -20,8 +20,9 @@ class Settings(BaseSettings):
 
     # API_V1_STR: str = "/api/v1"
     # DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
-    ASYNC_DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/postgres"
-    DB_URL: str = f"postgresql://postgres:1234@localhost:1234/postgres"
+    # ASYNC_DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/muse"
+    ASYNC_DB_URL: str = f"postgresql+psycopg://postgres:1234@localhost:1234/muse"
+    DB_URL: str = f"postgresql://postgres:1234@localhost:1234/muse"
 
 
 settings = Settings()

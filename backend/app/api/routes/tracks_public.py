@@ -42,7 +42,7 @@ async def stream_track(
     session: SessionDep, 
     request: Request, 
     track_id: uuid.UUID, 
-    net_quality: str
+    net_quality: str 
 ):
     quality = net_quality.lower()
     if quality not in ['low', 'medium', 'high']:
@@ -88,7 +88,7 @@ async def stream_track(
     try:
         start_byte, end_byte = range_header.replace("bytes=", "").split("-")
         start_byte = int(start_byte)
-        end_byte = int(end_byte)
+        end_byte = int(end_byte) if len(end_byte) > 0 else audio_size - 1
 
         if start_byte >= audio_size or end_byte >= audio_size or start_byte > end_byte: 
             return Response(
@@ -110,6 +110,7 @@ async def stream_track(
                     media_type=audio_type,
                     headers={
                         "Accept-Ranges": "bytes",
+                        "Content-Range": f"bytes {start_byte}-{end_byte}/{audio_size}",
                         "Content-Type": audio_type,
                         "Content-Length": str(audio_size),
                     })

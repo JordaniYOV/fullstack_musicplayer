@@ -61,10 +61,10 @@ class ArtistBase(SQLModel):
 #DB Model 
 class Artist(ArtistBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    albums: list["Album"] = Relationship(back_populates="artist")
+    albums: list["Album"] = Relationship(back_populates="artist", cascade_delete=True)
 
 #Track's model
-class TrackBase(SQLModel, table=True):
+class TrackBase(SQLModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track_name: str = Field(min_length=1, max_length=255)
     duration_sec: int = Field(ge=1)
@@ -73,7 +73,7 @@ class TrackBase(SQLModel, table=True):
     monthly_plays: int | None = Field(default=0)
     all_time_plays: int | None = Field(default=0)
     likes: int | None = Field(default=0)
-    # artist: str = Field(min_length=1, max_length=255)
+    artist: str = Field(min_length=1, max_length=255)
 
 class Track(TrackBase, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
@@ -116,17 +116,24 @@ class PopularTracks(SQLModel, table=True):
 #Album's model
 class AlbumBase(SQLModel):
     album_name: str = Field(min_length=1, max_length=255)
-    album_cover: bytes 
-    image_type: str 
+    artist_name: str = Field(min_length=1, max_length=255) 
     total_tracks: int 
     year_release: int = Field(le=3000, ge=1000)
     
 #DB model
 class Album(AlbumBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    artist_id: uuid.UUID = Field(foreign_key="artist.id")
+    cover_id: uuid.UUID = Field(foreign_key="albums_cover.id", ondelete=CASCADE)
+    artist_id: uuid.UUID = Field(foreign_key="artist.id", ondelete=CASCADE)
     artist: "Artist" = Relationship(back_populates="albums")
     tracks: list["Track"] = Relationship(back_populates="album", cascade_delete=True)
+
+#Album cover table
+class Albums_cover(SQLModel, table=True): 
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    album_cover: bytes
+    cover_type: str 
+
 
 #Conecting model for tracks in playlists 
 class PlaylistTrack(SQLModel, table=True):

@@ -1,4 +1,5 @@
 import asyncio
+from re import S
 from sqlmodel import select, asc
 
 from app.api.deps import SessionDep
@@ -6,7 +7,7 @@ from app.celery_app import celery_app
 from ..core.redis.redis import redis_client
 from ..core.redis.track_manager import TrackRedisManager
 from ..core.db import async_engine
-from app.models import Track
+from app.models import Track, Album
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 @celery_app.task()
@@ -32,7 +33,12 @@ def update_list_task(period: str, limit: int):
             for track in tracks:
                 track_dict = await asyncio.to_thread(track.model_dump)
                 
-                await track_manager.add_track(track_dict)
+                statement = select(Album).where(Album.id == track.album_id)
+                album_obj = await session.execute(statement)
+                album = album_obj.scalar_one_or_none()
+                album_dict = await asyncio.to_thread(album.model_dump)
+                
+                await track_manager.add_track(track_dict, album_dict)
             
     asyncio.run(update_list())
 

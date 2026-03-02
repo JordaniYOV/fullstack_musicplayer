@@ -1,25 +1,26 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.core.security import verify_password, get_password_hash
-from app.models import UserRegister, UserCreate, UpdatePassword, Message, UserPublic, UserUpdateMe
+from app.models import Token, UserRegister, UserCreate, UpdatePassword, Message, UserPublic, UserUpdateMe
 from app.api.deps import CurrentUser, SessionDep
 from app.crud import user
 router = APIRouter(prefix="/user", tags=["users"])
 
 
+#Profile
 @router.post('/signup', response_model=UserPublic)
 async def register_user(session: SessionDep, user_in: UserRegister) -> Any:
-    user = await user.get_user_by_email(session=session, email=user_in.email)
-    if user: 
+    User = await user.get_user_by_email(session=session, email=user_in.email)
+    if User: 
         raise HTTPException(
             status_code=400, 
             detail="The user with this email already exists in the system",
         )    
     user_create = UserCreate.model_validate(user_in)
-    user = await user.create_user(session=session, user_create=user_create)
-    return user
+    User = await user.create_user(session=session, user_create=user_create)
+    return User
 
 @router.patch("/me/password", response_model=Message)
 async def update_password_me(
@@ -61,6 +62,21 @@ async def update_info(
     await session.refresh(current_user)
     return current_user
 
+@router.put("/me/avatar", response_model=Message)
+async def update_avatar(session: SessionDep, current_user: CurrentUser, avatar: UploadFile): 
+    """
+    Update own avatar
+    """
+
+    if avatar: 
+        content = await avatar.read()
+        current_user.avatar = content
+
+    session.add(current_user)
+    await session.commit()
+    
+    return Message(message="Avatar have been updated")
+
 @router.delete("/me/delete")
 async def delete_me(
     *, session: SessionDep, current_user: CurrentUser
@@ -71,4 +87,30 @@ async def delete_me(
     await session.delete(current_user)
     await session.commit()
     return Message(message="Your acc was deleted")
-    
+
+#Subscribes
+@router.patch("/me/follow/{artist_id}")
+async def follow_artist(session: SessionDep, current_user: CurrentUser):
+    return current_user
+
+@router.patch("me/unfollow/{artist_id}")
+async def unfollow_artist(session: SessionDep, current_user: CurrentUser): 
+    return current_user
+
+@router.get("/me/following")
+async def get_following_artist(session: SessionDep, current_user: CurrentUser): 
+    User = User.model_validate(current_user)
+    return User
+
+#Statistic
+
+#Settings
+@router.get("me/settings")
+async def get_current_settings(session: SessionDep, current_user: CurrentUser): 
+    return current_user
+
+@router.patch("me/settings/update")
+async def update_settings(session: SessionDep, current_user: CurrentUser): 
+    return current_user
+
+

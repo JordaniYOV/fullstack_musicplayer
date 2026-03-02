@@ -1,17 +1,15 @@
-import uuid 
 
-from pydantic import BaseModel
 from sqlmodel import select
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Response
-from ...core.redis.redis import redis_client
+from fastapi import APIRouter, HTTPException, UploadFile, File
+from ....core.redis.redis import redis_client
 
 from app.api.deps import SessionDep
-from app.models import Album, Artist,  Message, Track, Albums_cover
+from app.models import Album, Artist, Albums_cover
 from app.crud.track import add_track
 
-router = APIRouter(tags=['admin'])
+router = APIRouter(tags=['tracks_private'])
 
 @router.post('/add/album-tracks')
 async def upload_tracks(
@@ -59,55 +57,6 @@ async def upload_tracks(
         answer = await add_track(session=session, track_files=tracks, album_id=album.id, album_existed=False, album_name=album.album_name, artist=artist_name)
         return answer
     
-@router.post('/add/artist')
-async def add_artist(session: SessionDep,
-                    photo: UploadFile, 
-                    name: str, 
-                    bio: str | None = None, 
-                    monthly_listeners: int = 120,
-                    verified: bool = False
-): 
-    image_type = photo.content_type
-    image = await photo.read()
-    artist = Artist(
-        photo=image, 
-        image_type=image_type, 
-        name=name, 
-        bio=bio, 
-        verified=verified,
-        monthly_listeners=monthly_listeners,
-    )
-    session.add(artist)
-    await session.commit()
-
-@router.delete('/delete_album')
-async def delete_album(session: SessionDep, name: str): 
-    """
-    Delete album with parameters name
-    """
-    statement = select(Album).where(Album.album_name == name)
-    album_obj = await session.execute(statement)
-    album = album_obj.scalar_one_or_none()
-    await session.delete(album)
-    await session.commit() 
-    return Message(message=f"Album {name} was deleted and all releated tracks")
-
-
-@router.get('/album/cover/{cover_id}')
-async def get_album_cover(session: SessionDep, cover_id: uuid.UUID):
-    """
-    Recieve album cover with cover_id
-    """
-    statement = select(Albums_cover).where(Albums_cover.id == cover_id)
-    cover_obj = await session.execute(statement)
-    cover = cover_obj.scalar_one_or_none()
-
-    return Response(
-        content=cover.album_cover, 
-        media_type="image/png"
-    )
-    
-
 @router.post("/redis/delete")
 async def clear_redis():
     try: 

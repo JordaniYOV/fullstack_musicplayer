@@ -1,34 +1,18 @@
 import uuid 
 
-from fastapi import APIRouter, HTTPException, Header, Request
-from fastapi.responses import StreamingResponse, Response, HTMLResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse, Response
 from sqlmodel import select
-from sqlalchemy.orm import selectinload
+
 
 from app.api.deps import SessionDep
-from app.models import Album, Track, TrackHigh, TrackLow, TrackMedium
+from app.models import Track, TrackHigh, TrackLow, TrackMedium
 from app.core.redis.redis import redis_client
 from app.core.redis.track_manager import TrackRedisManager
 
 from redis.asyncio import Redis
 
-
-
-
-
-router = APIRouter(tags=['get_info'])
-
-@router.get('/album/{album_id}/')
-async def get_album_tracks(session: SessionDep, album_id: str): 
-    statement = select(Album).where(Album.id == album_id).options(selectinload(Album.tracks))
-    album_obj = await session.execute(statement)
-    album = album_obj.scalar_one_or_none()
-    return album.tracks
-
-# @router.get('/trand/albums')
-# async def get_trand_albums(session: SessionDep): 
-#     statement = select(Track).where()
-
+router = APIRouter(tags=['track'])
 
 @router.get('/track/{track_id}/metadata/')
 async def track_metadata(session:SessionDep, track_id: uuid.UUID):

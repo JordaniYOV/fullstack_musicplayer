@@ -40,6 +40,7 @@ class UpdatePassword(SQLModel):
 class User(UserBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str 
+    avatar: bytes | None = Field(default=None)
     liked_songs: list["Track"] | None = Field(default=None, sa_column=Column(JSON))
     playlists: list["Playlist"] = Relationship(back_populates="owner")
     albums: list["Album"] | None = Field(default=None, sa_column=Column(JSON))

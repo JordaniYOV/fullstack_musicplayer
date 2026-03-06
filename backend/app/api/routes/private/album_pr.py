@@ -2,7 +2,7 @@ from fastapi import APIRouter, Response
 from sqlmodel import select
 from uuid import UUID 
 
-from app.models import Message, Album, Albums_cover
+from app.models import Message, Album, AlbumsCover
 from app.api.deps import SessionDep
 
 router = APIRouter(tags=["album_private"])
@@ -25,7 +25,7 @@ async def get_album_cover(session: SessionDep, cover_id: UUID):
     """
     Recieve album cover with cover_id
     """
-    statement = select(Albums_cover).where(Albums_cover.id == cover_id)
+    statement = select(AlbumsCover).where(AlbumsCover.id == cover_id)
     cover_obj = await session.execute(statement)
     cover = cover_obj.scalar_one_or_none()
 

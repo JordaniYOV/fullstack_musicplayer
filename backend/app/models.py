@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from tkinter import CASCADE
 import uuid
 
 from pydantic import EmailStr
 
+from sqlalchemy import null
 from sqlmodel import Relationship, SQLModel, Field, JSON, Column
 
 
@@ -105,13 +106,41 @@ class TrackHigh(TrackQualityBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track: "Track" = Relationship(back_populates='track_high')
 
-class PopularTracks(SQLModel, table=True): 
+class PlayEvent(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    track_id: uuid.UUID = Field(foreign_key="track.id", ondelete=CASCADE)
-    period: str 
-    play_count: int 
-    calculated_at: datetime = Field(default_factory=datetime.now)
-    track: "Track" = Relationship(back_populates='popular_tracks')
+    track_id: uuid.UUID = Field(default=None)
+    user_id: uuid.UUID = Field(default=None)
+    played_at: datetime = Field(default_factory=datetime.now)
+    duration_listened: int = Field(default=0)
+    completed: bool = Field(default=False)
+
+class DailyTop(SQLModel, table=True): 
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    track_id: uuid.UUID = Field(default=None, foreign_key="track.id", ondelete=CASCADE)
+    play_count: int = Field(default=0)
+    data: datetime = Field(default_factory=datetime.now)
+
+class WeeklyTop(SQLModel, table=True): 
+    id: uuid.UUID = Field(default_factor=uuid.uuid4, primary_key=True)
+    track_id = uuid.UUID = Field(default=None, foreign_key="track.id", ondelete=CASCADE)
+    play_count: int = Field(default=0)
+    week_start: datetime = Field(default_factory=datetime.now)
+    week_end: datetime = Field(default_factory=datetime.now + timedelta(weeks=1))
+
+class MonthlyTop(SQLModel, table=True): 
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    track_id = uuid.UUID = Field(default=None, foreign_key="track.id", ondelete=CASCADE)
+    play_count: int = Field(default=0)
+    month_start: datetime = Field(default_factory=datetime.now)
+    month_end: datetime = Field(default_factory=datetime.now + timedelta(weeks=4))
+
+# class PopularTracks(SQLModel, table=True): 
+#     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+#     track_id: uuid.UUID = Field(foreign_key="track.id", ondelete=CASCADE)
+#     period: str 
+#     play_count: int 
+#     calculated_at: datetime = Field(default_factory=datetime.now)
+#     track: "Track" = Relationship(back_populates='popular_tracks')
 
 
 #Album's model
@@ -119,22 +148,33 @@ class AlbumBase(SQLModel):
     album_name: str = Field(min_length=1, max_length=255)
     artist_name: str = Field(min_length=1, max_length=255) 
     total_tracks: int 
+    play_count: int 
     year_release: int = Field(le=3000, ge=1000)
     
 #DB model
 class Album(AlbumBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    cover_id: uuid.UUID = Field(foreign_key="albums_cover.id", ondelete=CASCADE)
     artist_id: uuid.UUID = Field(foreign_key="artist.id", ondelete=CASCADE)
     artist: "Artist" = Relationship(back_populates="albums")
     tracks: list["Track"] = Relationship(back_populates="album", cascade_delete=True)
+    cover: "AlbumsCover" = Relationship(back_populates="album", cascade_delete=True)
 
 #Album cover table
-class Albums_cover(SQLModel, table=True): 
+class AlbumsCover(SQLModel, table=True): 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    album_id: uuid.UUID = Field(foreign_key="album.id", ondelete=CASCADE)
     album_cover: bytes
     cover_type: str 
+    
 
+#Popular albums
+class PopularAlbums(SQLModel, table=True): 
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    album_id: uuid.UUID = Field(foreign_key="album.id", ondelete=CASCADE)
+    period: str 
+    play_count: int
+    calculated_at: datetime = Field(default_factory=datetime.now)
+    album: "Album" = Relationship(back_populates="popular_albums")
 
 #Conecting model for tracks in playlists 
 class PlaylistTrack(SQLModel, table=True):

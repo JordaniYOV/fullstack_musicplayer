@@ -9,8 +9,9 @@ from app.models import Message
 class TrackRedisManager(): 
     def __init__(self, redis: redis.Redis): 
         self.redis = redis
-        self.popularity_key = "track:popularity"
+        self.track_popularity_key = "track:popularity"
         self.track_key = "track"
+        self.album_popularity_key = "album:popularity"
         self.album_key = "album"
 
     async def add_artist(self, artist_data: Dict[str, Any]) -> bool: 
@@ -44,36 +45,40 @@ class TrackRedisManager():
 
         await self.redis.zadd("artist:popularity", {artist_key: plays})
 
-    # async def get_album(self, album_key: str):
-    #     if not await self.redis.exists(album_key): 
-    #         return None
+    async def get_album(self, album_key: str):
+        if not await self.redis.exists(album_key): 
+            return None
         
-    #     album = await self.redis.hgetall(album_key)
+        album = await self.redis.hgetall(album_key)
 
-    #     data = { 
-    #         "track_id": album_key[6:], 
-    #         **album
-    #     }
+        data = { 
+            "track_id": album_key[6:], 
+            **album
+        }
 
-    #     return data
+        return data
 
 
 
-    # async def add_album_of_populartrack(self, album: Dict[str, any]):
-    #     album_id = album.get("id")
+    async def add_popular_album(self, album: Dict[str, any]):
+        album_id = album.get("id")
 
-    #     album_key = f"{self.album_key}:{album_id}"
+        album_key = f"{self.album_key}:{album_id}"
 
-    #     if await self.get_album(album_key) is not None:
-    #         return None
+        if await self.get_album(album_key) is not None:
+            return None
 
-    #     data = {
-    #         "album_cover": album.get("album_cover"),
-    #         "album_name": album.get("album_name"),
-    #         "artist": album.get("artist_name")
-    #     }
+        data = {
+            "cover_id": album.get("cover_id"),
+            "album_name": album.get("album_name"),
+            "artist": album.get("artist_name")
+        }
 
-    #     await self.redis.hset(album_key, mapping=data)
+        await self.redis.hset(album_key, mapping=data)
+
+        play_count = int(album.get("play_count"))
+
+        await self.redis.zadd(self.album_popularity_key, {album_key: play_count})
 
     async def add_track(self, track_data: Dict[str, Any], album_dict: Dict[str, Any]) -> bool:
         """
@@ -106,9 +111,9 @@ class TrackRedisManager():
 
         # await self.redis.hset(stats_key, mapping=initial_stats)
 
-        day_key = f"{self.popularity_key}:day"
-        week_key = f"{self.popularity_key}:week"
-        month_key = f"{self.popularity_key}:monthly"
+        day_key = f"{self.track_popularity_key}:day"
+        week_key = f"{self.track_popularity_key}:week"
+        month_key = f"{self.track_popularity_key}:monthly"
 
         daily_plays = int(track_data.get("daily_plays", 0))
         weekly_plays = int(track_data.get("weekly_plays", 0))

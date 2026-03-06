@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 from ....core.redis.redis import redis_client
 
 from app.api.deps import SessionDep
-from app.models import Album, Artist, Albums_cover
+from app.models import Album, Artist, AlbumsCover
 from app.crud.track import add_track
 
 router = APIRouter(tags=['tracks_private'])
@@ -34,7 +34,7 @@ async def upload_tracks(
         artist_obj = await session.execute(select(Artist).where(Artist.name == artist_name))
         artist = artist_obj.scalar_one_or_none()
 
-        cover = Albums_cover( 
+        cover = AlbumsCover( 
             album_cover=cover, 
             cover_type=cover_type
         )

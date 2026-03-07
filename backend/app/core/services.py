@@ -1,6 +1,9 @@
+from datetime import date, datetime, timedelta
+from typing import Optional
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import PlayEvent
+from app.models import DailyTop, PlayEvent, Track
 
 
 
@@ -27,3 +30,71 @@ class ChartService:
         await self.session.commit()
         await self.session.refresh(event)
         return event
+    
+    async def get_daily_chart(self, 
+                              chart_date: Optional[date] = None, 
+                              limit: int = 10): 
+        """
+        Get daily top
+        """
+        if chart_date is None: 
+            chart_date = date.today()
+
+        query = select(DailyTop, Track).join(Track, DailyTop.track_id == Track.id).where(DailyTop.data == chart_date).limit(limit=limit)
+
+        result = await self.session.execute(query)
+        rows = result.scalars().all()
+
+    async def calculate_daily_chart_on_fly(self, chart_date: date, limit: int): 
+        """
+        Data agregation for current day
+        """
+
+        start_dt = datetime.combine(chart_date, datetime.min.time())
+        end_dt = start_dt + timedelta(days=1)
+
+        query = select(
+                PlayEvent.track_id,
+                func.count().label('play_count'),
+                func.avg(PlayEvent.duration_listened).label('avg_duration')
+            ).where(
+                and_(
+                    PlayEvent.played_at >= start_dt, 
+                    PlayEvent.played_at < end_dt
+                )
+            ).group_by(PlayEvent.track_id).order_by(desc('play_count')).limit(limit)
+        
+
+        result = await self.session.execute(query)
+        stats = result.scalars().all()
+
+
+        track_ids = [row.track_id for row in stats]
+        tracks_query = select(Track).where(Track.id.in_(track_ids))
+        tracks_result = await self.session.execute(tracks_query)
+        tracks = {t.id: t for t in tracks_result.scalars().all()}
+
+        entries = []
+        total_plays = 0
+        
+        for rank, row in enumerate(stats, 1): 
+            track = tracks.get(row.track_id)
+            if track: 
+                entries.append(ChartEntry(
+                    rank=rank, 
+                    track_id=track.id, 
+                    title=track.title,
+                    artist=track.artist, 
+                    play_count=row.play_count,
+                    unique_listeners=row.unique_listeners, 
+                    trend=None
+                ))
+                total_plays += row.play_count
+        
+        return ChartResponse(
+            chart_type="daily", 
+            period=chart_date.isoformat(), 
+            generated_at=datetime.utcnow(),
+            entries=entries, 
+            total_plays=total_plays
+        )

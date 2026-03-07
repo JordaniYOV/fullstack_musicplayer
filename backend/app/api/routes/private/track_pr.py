@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 from ....core.redis.redis import redis_client
 
 from app.api.deps import SessionDep
-from app.models import Album, Artist, AlbumsCover
+from app.models.albums import Album, AlbumsCover
+from app.models.artists import Artist
 from app.crud.track import add_track
 
 router = APIRouter(tags=['tracks_private'])

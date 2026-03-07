@@ -1,7 +1,7 @@
 from fastapi import APIRouter, UploadFile
 
 from app.api.deps import SessionDep
-from app.models import Artist
+from app.models.artists import Artist
 
 router = APIRouter(tags=["artist_private"])
 

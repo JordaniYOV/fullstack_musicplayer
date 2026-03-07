@@ -6,7 +6,7 @@ from sqlmodel import select
 
 
 from app.api.deps import SessionDep
-from app.models import Track, TrackHigh, TrackLow, TrackMedium
+from app.models.tracks import Track, TrackHigh, TrackLow, TrackMedium
 from app.core.redis.redis import redis_client
 from app.core.redis.track_manager import TrackRedisManager
 

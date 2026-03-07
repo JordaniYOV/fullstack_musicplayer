@@ -7,7 +7,8 @@ from app.celery_app import celery_app
 from ..core.redis.redis import redis_client
 from ..core.redis.track_manager import TrackRedisManager
 from ..core.db import async_engine
-from app.models import Track, Album
+from app.models.tracks import Track
+from app.models.albums import Album
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 @celery_app.task()

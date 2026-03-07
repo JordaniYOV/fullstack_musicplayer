@@ -9,7 +9,8 @@ from fastapi import Depends, HTTPException, status
 import jwt
 import redis.asyncio as redis
 from app.core.db import async_engine
-from app.models import TokenPayload, User
+from app.models.users import User
+from app.core.schemas import TokenPayload
 from app.core.redis.redis import redis_client
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings

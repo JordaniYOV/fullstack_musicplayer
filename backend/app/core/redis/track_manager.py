@@ -4,7 +4,7 @@ import uuid
 
 import redis.asyncio as redis
 
-from app.models import Message
+from app.core.schemas import Message
 
 class TrackRedisManager(): 
     def __init__(self, redis: redis.Redis): 

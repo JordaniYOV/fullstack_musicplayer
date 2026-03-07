@@ -3,7 +3,8 @@ from typing import Any
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.core.security import verify_password, get_password_hash
-from app.models import Token, UserRegister, UserCreate, UpdatePassword, Message, UserPublic, UserUpdateMe
+from app.models.users import UserRegister, UserCreate, UpdatePassword, UserPublic, UserUpdateMe
+from app.core.schemas import Message, Token
 from app.api.deps import CurrentUser, SessionDep
 from app.crud import user
 router = APIRouter(prefix="/user", tags=["users"])

@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import DailyTop, PlayEvent, Track
+from app.models.tracks import DailyTop, PlayEvent, Track, ChartEntry, ChartResponse
 
 
 
@@ -44,6 +44,38 @@ class ChartService:
 
         result = await self.session.execute(query)
         rows = result.scalars().all()
+
+        if not rows: 
+            if chart_date == date.today(): 
+                return await self.calculate_daily_chart_on_fly(chart_date, limit)
+           
+            raise ValueError(f"No chart data for {chart_date}")
+        entries = []
+        total_plays = 0
+
+        for daily_top, track in rows:
+            entries.append(ChartEntry(
+                rank=daily_top.rank_position, 
+                track_id=track.id, 
+                title=track.title, 
+                artist=track.artist, 
+                play_count=daily_top.play_count,
+                unique_listeners=daily_top.unique_listeners, 
+                trend=daily_top.trend, 
+                previous_rank=await self.get_previous_rank(daily_top.track_id, chart_date), 
+            ))
+            
+            total_plays += daily_top.play_count
+
+        return ChartResponse(
+            chart_type="daily", 
+            period=chart_date.isoformat(), 
+            genereted_at=datetime.now(),
+            entries=entries, 
+            total_plays=total_plays
+        )
+    
+    
 
     async def calculate_daily_chart_on_fly(self, chart_date: date, limit: int): 
         """
@@ -94,7 +126,27 @@ class ChartService:
         return ChartResponse(
             chart_type="daily", 
             period=chart_date.isoformat(), 
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(),
             entries=entries, 
             total_plays=total_plays
         )
+    
+    async def get_previous_rank(self, track_id: int, current_date: date, chart_type: str) -> Optional[int]:
+        """
+        Recieve rank position in previous period
+        """
+        
+        if chart_type == 'daily':
+            prev_date = current_date - timedelta(days=1)
+            query = select(DailyTop.rank_position).where(
+                and_(
+                    DailyTop.chart_date == prev_date, 
+                    DailyTop.track_id == track_id
+                )
+            )
+        else: 
+            return None 
+        
+        result = await self.session.execute(query)
+        row = result.scalar_one_or_none()
+        return row

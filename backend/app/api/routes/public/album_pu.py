@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from sqlmodel import select
 from sqlalchemy.orm import selectinload
 
-from app.models import Album 
+from app.models.albums import Album 
 from ...deps import SessionDep
 
 

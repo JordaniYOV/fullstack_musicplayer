@@ -82,7 +82,7 @@ class DailyTop(SQLModel, table=True):
 class WeeklyTop(SQLModel, table=True): 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track_id: uuid.UUID = Field(default=None, foreign_key="track.id", ondelete='CASCADE', nullable=False)
-    year_week: date = Field(default_factory=date.today)
+    year_week: str = Field(default=None)
     week_start: datetime = Field(default_factory=datetime.now)
     week_end: datetime = Field(default_factory=lambda: datetime.now() + timedelta(weeks=1))
     play_count: int = Field(default=0)
@@ -97,7 +97,7 @@ class WeeklyTop(SQLModel, table=True):
 class MonthlyTop(SQLModel, table=True): 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     track_id: uuid.UUID = Field(default=None, foreign_key="track.id", ondelete='CASCADE', nullable=False)
-    year_month: date = Field(default_factory=date.today)
+    year_month: str = Field(default=None)
     month_start: datetime = Field(default_factory=datetime.now)
     month_end: datetime = Field(default_factory=lambda: datetime.now() + timedelta(weeks=4))
     play_count: int = Field(default=0)

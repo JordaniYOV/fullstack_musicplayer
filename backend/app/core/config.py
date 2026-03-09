@@ -18,11 +18,10 @@ class Settings(BaseSettings):
     redis_decode_response: bool = True
     cache_ttl: int = 3600
 
-    # API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/api/v1"
     # DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
     # ASYNC_DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/muse"
     ASYNC_DB_URL: str = f"postgresql+psycopg://postgres:1234@localhost:1234/muse"
-    DB_URL: str = f"postgresql://postgres:1234@localhost:1234/muse"
 
 
 settings = Settings()

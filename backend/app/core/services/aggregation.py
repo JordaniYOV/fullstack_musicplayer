@@ -1,16 +1,16 @@
 from typing import Optional
 from datetime import date, timedelta, datetime
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import Session
 from sqlalchemy import delete, select, func, and_, desc
 
 from app.models.tracks import PlayEvent, DailyTop, WeeklyTop, MonthlyTop
 
 class AggregationService:
-    def __init__(self, session: AsyncSession): 
+    def __init__(self, session: Session): 
         self.session = session
 
-    async def aggregate_daily(self, target_date: Optional[date] = None):
+    def aggregate_daily(self, target_date: Optional[date] = None):
         """
         Daily top aggregation
         """
@@ -38,23 +38,23 @@ class AggregationService:
             )
         )     
 
-        result = await self.session.execute(stats_query)
+        result = self.session.exec(stats_query)
         rows = result.all()
 
-        await self.session.execute(
+        self.session.execute(
             delete(DailyTop).where(DailyTop.chart_date == target_date)
         )
 
         yesterday = target_date - timedelta(days=1)
         yesterday_query = select(DailyTop).where(DailyTop.chart_date == yesterday)
-        yesterday_result = await self.session.execute(yesterday_query)
+        yesterday_result = self.session.exec(yesterday_query)
         yesterday_ranks = { 
             row.track_id: row.rank_position
-            for row in yesterday_result.scalars().all()
+            for row in yesterday_result.all()
         }
 
         for rank, row in enumerate(rows, 1): 
-            trend = await self.calculate_trend(row.track_id, rank, yesterday_ranks)
+            trend = self.calculate_trend(row.track_id, rank, yesterday_ranks)
 
             daily_top = DailyTop(
                 chart_date=target_date, 
@@ -68,11 +68,11 @@ class AggregationService:
 
             self.session.add(daily_top)
 
-            await self.session.commit()
+            self.session.commit()
             print(f"Aggregated daily chart for {target_date}: {len(rows)} tracks")
             return len(rows)
         
-    async def aggregate_weekly(self, target_week: Optional[date] = None): 
+    def aggregate_weekly(self, target_week: Optional[date] = None): 
         """
        Create weekly top
         """
@@ -104,10 +104,10 @@ class AggregationService:
                 .limit(100)
         )
 
-        result = await self.session.execute(stats_query)
-        rows = result.scalars().all()
+        result = self.session.exec(stats_query)
+        rows = result.all()
 
-        await self.session.execute(delete(WeeklyTop).where(WeeklyTop.year_week == target_week))
+        self.session.execute(delete(WeeklyTop).where(WeeklyTop.year_week == target_week))
 
         for rank, row in enumerate(rows, 1):
             weekly_top = WeeklyTop(
@@ -122,11 +122,11 @@ class AggregationService:
 
             self.session.add(weekly_top)
 
-        await self.session.commit()
+        self.session.commit()
         print(f"Aggregated weekly chart for {target_week}: {len(rows)} tracks")
         return len(rows)
 
-    async def aggregate_monthly(self, target_month: Optional[date] = None):
+    def aggregate_monthly(self, target_month: Optional[date] = None):
         """
         Create monthly top 
         """
@@ -159,10 +159,10 @@ class AggregationService:
                 .limit(100)
         )
 
-        result = await self.session.execute(stats_query)
+        result = self.session.exec(stats_query)
         rows = result.all()
 
-        await self.session.execute(
+        self.session.execute(
             delete(MonthlyTop).where(MonthlyTop.year_month == target_month)
         )
 
@@ -179,26 +179,26 @@ class AggregationService:
 
             self.session.add(monthly_top)
         
-        await self.session.commit()
+        self.session.commit()
         print(f'Aggregated monthly chart for {target_month}: {len(rows)} tracks')
         return len(rows)
 
-    async def cleanup_old_events(self, days: int = 30): 
+    def cleanup_old_events(self, days: int = 30): 
         """
         Cleanup old playevents
         """
 
         cutoff_date = datetime.now() - timedelta(days=days)
 
-        result = await self.session.execute(
+        result = self.session.execute(
             delete(PlayEvent).where(PlayEvent.played_at < cutoff_date)
         )
-        await self.session.commit()
+        self.session.commit()
         print(f"Cleaned up {result.rowcount} old play events")
 
         return result.rowcount
 
-    async def calculate_trend(self,
+    def calculate_trend(self,
                               track_id: int, 
                               current_rank: int,
                               previous_ranks: dict) -> int: 

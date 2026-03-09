@@ -16,11 +16,9 @@ async_engine = create_async_engine(
 
 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-engine = create_engine(settings.DB_URL, echo=True)
+sync_engine = create_engine(
+    settings.ASYNC_DB_URL, 
+    echo=True, 
+    pool_size=5)
 
-def init_db():
-    from models import User, Album, Artist, Playlist, PlaylistTrack, Track
-    from sqlmodel import SQLModel
-
-    SQLModel.metadata.create_all(engine)
 

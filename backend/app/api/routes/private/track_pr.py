@@ -3,7 +3,7 @@ from sqlmodel import select
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from ....core.redis.redis import redis_client
+# from ....core.redis.redis import redis_client
 
 from app.api.deps import SessionDep
 from app.models.albums import Album, AlbumsCover
@@ -58,12 +58,12 @@ async def upload_tracks(
         answer = await add_track(session=session, track_files=tracks, album_id=album.id, album_existed=False, album_name=album.album_name, artist=artist_name)
         return answer
     
-@router.post("/redis/delete")
-async def clear_redis():
-    try: 
-        redis = await redis_client.get_client()
-        await redis.flushall()
-        return {f"Cache cleraed successfully {await redis.dbsize()}"}
-    except Exception as e: 
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.post("/redis/delete")
+# async def clear_redis():
+#     try: 
+#         redis = await redis_client.get_client()
+#         await redis.flushall()
+#         return {f"Cache cleraed successfully {await redis.dbsize()}"}
+#     except Exception as e: 
+#         raise HTTPException(status_code=500, detail=str(e))
     

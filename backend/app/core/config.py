@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # Redis
+    redis_url: str = "redis://localhost:12345"
     redis_host: str = "localhost"
     redis_port: int = 12345
     redis_password: Optional[str] = None

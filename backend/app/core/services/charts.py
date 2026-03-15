@@ -4,12 +4,14 @@ from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tracks import DailyTop, MonthlyTop, PlayEvent, Track, ChartEntry, ChartResponse, TrendingTrack, WeeklyTop
-
+from app.core.redis.cache_chart import ChartCacheServiceAsync, ChartChachServiceSync
+from app.core.redis.redis import sync_redis_client, 
 
 
 class ChartService:
     def __init__(self, session: AsyncSession): 
         self.session = session
+        self.cache = ChartCacheServiceAsync()
 
     async def record_play(self, 
                           track_id: int, 

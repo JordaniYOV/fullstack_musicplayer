@@ -2,12 +2,16 @@ from datetime import datetime, timedelta
 from typing import Any, Dict
 import uuid
 
-import redis.asyncio as redis
+import redis.asyncio as aioredis
+import redis as syncredis
 
 from app.core.schemas import Message
 
 class TrackRedisManager(): 
-    def __init__(self, redis: redis.Redis): 
+    """
+    Old chart service
+    """
+    def __init__(self, redis: syncredis.Redis): 
         self.redis = redis
         self.track_popularity_key = "track:popularity"
         self.track_key = "track"
@@ -29,7 +33,7 @@ class TrackRedisManager():
             "verifed": artist_data.get("verified")
         }
 
-        await self.redis.hset(artist_key, data)
+        self.redis.hset(artist_key, data)
 
         stats_key = f"{artist_key}:stats"
 
@@ -39,33 +43,18 @@ class TrackRedisManager():
             "followers": artist_data.get("followers")
         }
 
-        await self.redis.hset(stats_key, stats)
+        self.redis.hset(stats_key, stats)
 
         plays = int(artist_data.get("plays", 0))
 
-        await self.redis.zadd("artist:popularity", {artist_key: plays})
-
-    async def get_album(self, album_key: str):
-        if not await self.redis.exists(album_key): 
-            return None
-        
-        album = await self.redis.hgetall(album_key)
-
-        data = { 
-            "track_id": album_key[6:], 
-            **album
-        }
-
-        return data
-
-
+        self.redis.zadd("artist:popularity", {artist_key: plays})
 
     async def add_popular_album(self, album: Dict[str, any]):
         album_id = album.get("id")
 
         album_key = f"{self.album_key}:{album_id}"
 
-        if await self.get_album(album_key) is not None:
+        if self.get_album(album_key) is not None:
             return None
 
         data = {
@@ -74,11 +63,11 @@ class TrackRedisManager():
             "artist": album.get("artist_name")
         }
 
-        await self.redis.hset(album_key, mapping=data)
+        self.redis.hset(album_key, mapping=data)
 
         play_count = int(album.get("play_count"))
 
-        await self.redis.zadd(self.album_popularity_key, {album_key: play_count})
+        self.redis.zadd(self.album_popularity_key, {album_key: play_count})
 
     async def add_track(self, track_data: Dict[str, Any], album_dict: Dict[str, Any]) -> bool:
         """
@@ -99,7 +88,7 @@ class TrackRedisManager():
             "cover":str(album_dict.get("cover_id"))
         }
 
-        await self.redis.hset(track_key, mapping=data)
+        self.redis.hset(track_key, mapping=data)
 
         # await self.add_album_of_populartrack(album_dict)
 
@@ -119,9 +108,24 @@ class TrackRedisManager():
         weekly_plays = int(track_data.get("weekly_plays", 0))
         monthly_plays = int(track_data.get("monthly_plays", 0))
 
-        await self.redis.zadd(day_key, {track_key: daily_plays})
-        await self.redis.zadd(week_key, {track_key: weekly_plays})
-        await self.redis.zadd(month_key, {track_key: monthly_plays})
+        self.redis.zadd(day_key, {track_key: daily_plays})
+        self.redis.zadd(week_key, {track_key: weekly_plays})
+        self.redis.zadd(month_key, {track_key: monthly_plays})
+
+    async def increase_plays(self, track_id: str, count: int): 
+        """
+        Increase track's plays by count
+        """
+
+        track_key = f"{self.track_key}:{track_id}"
+
+        stats_key = f"{track_key}:stats"
+
+        self.redis.hincrby(stats_key, "plays", count)
+
+        self.redis.zincrby(f"{self.track_popularity_key}:day", count, track_key)
+        self.redis.zincrby(f"{self.track_popularity_key}:week", count, track_key)
+        self.redis.zincrby(f"{self.track_popularity_key}:month", count, track_key)
 
     async def get_track(self, track_key: str): 
         """ 
@@ -143,7 +147,6 @@ class TrackRedisManager():
 
         return track_info
 
-
     async def get_popular_track(self, period: str, limit: int):
         """
         Get n popular tracks in given period
@@ -163,18 +166,17 @@ class TrackRedisManager():
             return [await self.get_track(track_key) for track_key in track_keys]
 
         return Message(message="You set wrong period, there is day, week or month. Try agian")
+    
+    async def get_album(self, album_key: str):
+        if not await self.redis.exists(album_key): 
+            return None
         
-    async def increase_plays(self, track_id: str, count: int): 
-        """
-        Increase track's plays by count
-        """
+        album = await self.redis.hgetall(album_key)
 
-        track_key = f"{self.track_key}:{track_id}"
+        data = { 
+            "track_id": album_key[6:], 
+            **album
+        }
 
-        stats_key = f"{track_key}:stats"
-
-        await self.redis.hincrby(stats_key, "plays", count)
-
-        await self.redis.zincrby(f"{self.popularity_key}:day", count, track_key)
-        await self.redis.zincrby(f"{self.popularity_key}:week", count, track_key)
-        await self.redis.zincrby(f"{self.popularity_key}:month", count, track_key)
+        return data
+    

@@ -1,17 +1,50 @@
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import settings
 from .api.main import api_router
+from app.core.redis.redis import get_async_redis, get_sync_redis, close_async_redis, close_sync_redis
 
 import sys 
 import asyncio
+
+@asynccontextmanager
+async def async_redis(app: FastAPI): 
+    print('Starting async redis')
+    app.state.async_redis = await get_async_redis()
+    yield
+    print('Shuting down async redis')
+    await close_async_redis()
+
+@contextmanager
+def sync_redis(app: FastAPI):
+    print('Starting sync redis')
+    app.state.sync_redis = get_sync_redis()
+    yield
+    print('Shuting down sync redis')
+    close_sync_redis()
+
+@asynccontextmanager
+async def combined_lifespan(app: FastAPI): 
+    """
+    Merge async and syn redis contexts
+    """
+    async with AsyncExitStack() as stack:
+        await stack.enter_async_context(async_redis(app))
+
+        stack.enter_context(sync_redis(app))
+
+        print('All services is working')
+        yield 
+        print('Shutitng down all services')
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 app = FastAPI(
     title=settings.PROJECT_NAME, 
+    lifespan=combined_lifespan,
 )
 
 origins = [

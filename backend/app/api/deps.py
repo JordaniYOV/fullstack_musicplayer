@@ -11,7 +11,7 @@ import redis.asyncio as redis
 from app.core.db import async_engine
 from app.models.users import User
 from app.core.schemas import TokenPayload
-from app.core.redis.redis import redis_client
+# from app.core.redis.redis import redis_client
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 from jwt.exceptions import InvalidTokenError
@@ -28,17 +28,17 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSession(async_engine) as session: 
         yield session
 
-async def get_redis() -> AsyncGenerator[redis.Redis, None]: 
-    """
-    Dependency to get redis client
-    Use to inject into endpoints
-    """
-    client = await redis_client.get_client()
+# async def get_redis() -> AsyncGenerator[redis.Redis, None]: 
+#     """
+#     Dependency to get redis client
+#     Use to inject into endpoints
+#     """
+#     client = await redis_client.get_client()
     
-    try: 
-        yield client
-    finally: 
-        pass
+#     try: 
+#         yield client
+#     finally: 
+#         pass
 
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]

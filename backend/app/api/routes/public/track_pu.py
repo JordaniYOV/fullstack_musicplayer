@@ -7,7 +7,7 @@ from sqlmodel import select
 
 from app.api.deps import SessionDep
 from app.models.tracks import Track, TrackHigh, TrackLow, TrackMedium
-from app.core.redis.redis import redis_client
+# from app.core.redis.redis import redis_client
 from app.core.redis.track_manager import TrackRedisManager
 
 from redis.asyncio import Redis
@@ -103,18 +103,18 @@ async def stream_track(
 
         
 
-@router.get('/track/trand/')
-async def get_trand_tracks(period: str, limit: int): 
-    """
-    Get popular tracks
-    """
+# @router.get('/track/trand/')
+# async def get_trand_tracks(period: str, limit: int): 
+#     """
+#     Get popular tracks
+#     """
 
-    redis = await redis_client.get_client()
-    manager = TrackRedisManager(redis)
+#     redis = await redis_client.get_client()
+#     manager = TrackRedisManager(redis)
 
-    answer = await manager.get_popular_track(period=period, limit=limit)
+#     answer = await manager.get_popular_track(period=period, limit=limit)
 
-    return answer
+#     return answer
 
 
 @router.patch('/track/add_plays/')

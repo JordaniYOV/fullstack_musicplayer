@@ -1,12 +1,15 @@
 import logging
 
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional
 from sqlmodel import Session
 from celery.exceptions import MaxRetriesExceededError
 
 from app.celery_app import celery_app
 from app.core.services.aggregation import AggregationService
+from app.core.services.charts import ChartService
+from app.core.redis.redis import RedisClient
+from app.core.redis.track_manager import TrackRedisManager
 from app.core.db import sync_engine
 
 # @celery_app.task()

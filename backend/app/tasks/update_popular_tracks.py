@@ -1,15 +1,15 @@
 import logging
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 from sqlmodel import Session
 from celery.exceptions import MaxRetriesExceededError
 
 from app.celery_app import celery_app
 from app.core.services.aggregation import AggregationService
-from app.core.services.charts import ChartService
-from app.core.redis.redis import RedisClient
-from app.core.redis.track_manager import TrackRedisManager
+from app.core.services.charts import ChartServiceSync
+from app.core.redis.redis import sync_redis_client
+from app.core.redis.cache_chart import ChartCacheServiceSync
 from app.core.db import sync_engine
 
 # @celery_app.task()
@@ -73,23 +73,31 @@ def aggregate_daily_task(self,
 
         with Session(sync_engine) as session: 
 
-            service = AggregationService(session)
-        
-            tracks_count = service.aggregate_daily(target_date)
+            agg_service = AggregationService(session)
+            tracks_count = agg_service.aggregate_daily(target_date)
             
-            # actual_date = target_date or (date.today() - timedelta(days=1))
-            # if actual_date == date.today() - timedelta(days=1):
-            #     cleaned = service.cleanup_old_events(days=30)
-            #     logger.info(f"cleaned {cleaned} old events")
+            actual_date = target_date or (date.today() - timedelta(days=1))
+            if actual_date == date.today() - timedelta(days=1):
+                cleaned = agg_service.cleanup_old_events(days=30)
+                logger.info(f"cleaned {cleaned} old events")
             
             logger.info(f"daily aggregation completed: {tracks_count} tracks")
 
-            return {
-                "status": "success", 
-                "date": actual_date.isoformat(), 
-                "tracks_processed": tracks_count, 
-                "task_id": self.request.id
-            }
+            chart_service = ChartServiceSync(session)
+            pop_tracks = chart_service.get_daily(actual_date)
+
+            redis = sync_redis_client
+            cache_service = ChartCacheServiceSync(redis)
+            cached = cache_service.save_daily_chart(target_date, pop_tracks["entries"], pop_tracks["total_plays"])
+
+            if cached: 
+                return {
+                    "status": "success", 
+                    "date": actual_date.isoformat(), 
+                    "tracks_processed": tracks_count, 
+                    "task_id": self.request.id,
+                    "cached": cached
+                }
 
     except Exception as exc: 
         logger.exception("Daily aggregation failed")
@@ -114,14 +122,23 @@ def aggregate_weekly_task(self, target_week_str: Optional[str] = None):
         logger.info(f"Starting Aggregation weekly aggregation for {target_week or 'last_week'}")
 
         with Session(sync_engine) as session:
-            service = AggregationService(session)
-            count = service.aggregate_weekly(target_week)
+            agg_service = AggregationService(session)
+            count = agg_service.aggregate_weekly(target_week)
 
-            return {
-                "status": "success", 
-                "week": target_week, 
-                "tracks_processed": count,
-            }
+            chart_service = ChartServiceSync(session)
+            pop_tracks = chart_service.get_weekly(target_week)
+
+            redis = sync_redis_client
+            cache_service = ChartCacheServiceSync(redis)
+            cached = cache_service.save_weekly_chart(target_week, pop_tracks["entries"], pop_tracks["total_plays"])
+
+            if cached:
+                return {
+                    "status": "success", 
+                    "week": target_week, 
+                    "tracks_processed": count,
+                    "cached": cached
+                }
         
     except Exception as exc: 
         logger.exception("Weekly aggrefation failed")
@@ -148,14 +165,23 @@ def aggregate_monthly_task(self, target_month_str: Optional[str] = None):
         logger.info(f"Starting monthly aggregation for {target_month or 'last_month'}")
 
         with Session(sync_engine) as session: 
-            service = AggregationService(session)
-            count = service.aggregate_monthly(target_month)
+            agg_service = AggregationService(session)
+            count = agg_service.aggregate_monthly(target_month)
 
-            return {
-                "status": "success", 
-                "month": target_month, 
-                "track_processed": count,
-            }
+            chart_service = ChartServiceSync(session)
+            pop_tracks = chart_service.get_monthly(target_month)
+
+            redis = sync_redis_client
+            cache_service = ChartCacheServiceSync(redis)
+            cached = cache_service.save_monthly_chart(target_month, pop_tracks["entries"], pop_tracks["total_tracks"])
+
+            if cached:
+                return {
+                    "status": "success", 
+                    "month": target_month, 
+                    "track_processed": count,
+                    "cached": cached
+                }
         
     except Exception as exc: 
         logger.exception("Monthly aggregation failed")
@@ -164,6 +190,6 @@ def aggregate_monthly_task(self, target_month_str: Optional[str] = None):
 @celery_app.task(queue="default")
 def clean_up_task(days: int = 30):
     with Session(sync_engine) as session: 
-        service = AggregationService(session)
-        cleaned = service.cleanup_old_events(days)
+        agg_service = AggregationService(session)
+        cleaned = agg_service.cleanup_old_events(days)
         return {"cleaned": cleaned, "days": days}

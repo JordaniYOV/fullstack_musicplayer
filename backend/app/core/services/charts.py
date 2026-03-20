@@ -1,17 +1,19 @@
 from datetime import date, datetime, timedelta
-from typing import Optional
+from typing import Any, Dict, Optional
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import Session
+from redis.asyncio import aioredis
 
 from app.models.tracks import DailyTop, MonthlyTop, PlayEvent, Track, ChartEntry, ChartResponse, TrendingTrack, WeeklyTop
 from app.core.redis.cache_chart import ChartCacheServiceAsync, ChartChachServiceSync
-from app.core.redis.redis import sync_redis_client, 
 
 
 class ChartService:
-    def __init__(self, session: AsyncSession): 
+    def __init__(self, session: AsyncSession, redis: aioredis.Redis): 
         self.session = session
-        self.cache = ChartCacheServiceAsync()
+        self.redis = redis
+        self.cache = ChartCacheServiceAsync(self.redis)
 
     async def record_play(self, 
                           track_id: int, 
@@ -41,7 +43,10 @@ class ChartService:
         """
         if chart_date is None: 
             chart_date = date.today()
-
+        cached_data = await self.cache.get_daily_chart(chart_date)
+        if cached_data:
+            return await self.format_cached_response(cached_data, "daily", chart_date.isoformat())
+        
         query = (select(DailyTop, Track)
                 .join(Track, DailyTop.track_id == Track.id)
                 .where(DailyTop.data == chart_date)
@@ -91,6 +96,11 @@ class ChartService:
             today = date.today()
             year_week = today.strftime("%Y-W%W")
 
+        cached_data = await self.cache.get_weekly_chart(year_week.isoformat())
+        
+        if cached_data:
+            return await self.format_cached_response(cached_data, "weekly", year_week.isoformat())
+        
         query = ( 
             select(WeeklyTop, Track)
             .join(Track, WeeklyTop.track_id == Track.id)
@@ -135,6 +145,11 @@ class ChartService:
         if year_month is None:
             year_month = date.today().strftime("%Y-%m")
 
+        cached_data = await self.cache.get_monthly_chart(year_month)
+
+        if cached_data: 
+            return await self.format_cached_response(cached_data, "montlhy", year_month)
+        
         query = (
             select(MonthlyTop, Track)
             .join(Track, MonthlyTop.track_id == Track.id)
@@ -312,3 +327,192 @@ class ChartService:
         result = await self.session.execute(query)
         row = result.scalar_one_or_none()
         return row
+    
+    async def format_cached_response(
+            self, 
+            cached: dict, 
+            chart_type: str, 
+            period: str
+    ) -> ChartResponse:
+        """
+        Remake cache data fro answer
+        """
+
+        entries = [
+            ChartEntry(
+                rank=e["rank"], 
+                track_id=e["track_id"], 
+                title=e["title"], 
+                artist=e["artist"], 
+                play_count=e["play_count"], 
+                unique_listeners=e["unique_listeners"], 
+                trend=e.get("trend"), 
+            )
+            for e in cached["entries"]
+        ]
+
+        return ChartResponse(
+            chart_type=chart_type, 
+            period=period,
+            generated_at=datetime.fromisoformat(cached["generated_at"]),
+            entries=entries, 
+            total_plays=cached["total_plays"],
+        )
+        
+
+class ChartServiceSync:
+    """
+    For celery. Give aggregated data from db
+    """
+
+    def __init__(self, session: Session)
+        self.session = session
+
+    def get_daily(
+            self, 
+            chart_date: Optional[date] = None, 
+            limit: int = 100
+    ) -> Dict[str, Any]: 
+        """
+        Get raw chart data.
+        Return dict for seraliziation (for cache))
+        """
+
+        if chart_date is None:
+            chart_date = date.today()
+
+        query = (
+            select(DailyTop, Track)
+            .join(Track, DailyTop.track_id == Track.id)
+            .where(DailyTop.chart_date == chart_date)
+            .order_by(DailyTop.rank_position)
+            .limit(limit)
+        )
+
+        result = self.session.exec(query).all()
+
+        if not result:
+            return {"entries": [], "total_plays": 0}
+        
+        entries = []
+        total_plays = 0 
+
+        for daily_top, track in result:
+            entry = {
+                "rank": daily_top.rank_position, 
+                "track_id": track.id, 
+                "title": track.artist, 
+                "album": track.album,
+                "play_count": daily_top.play_count,
+                "unique_listeners": daily_top.unique_listeners, 
+                "avg_listen_duration": daily_top.avg_listen_duration,
+                "trend": daily_top.trend, 
+            }
+            entries.append(entry)
+            total_plays += daily_top.play_count
+        
+        return {
+            "entries": entries, 
+            "total_plays": total_plays, 
+            "chart_date": chart_date.isoformat(),
+        }
+    
+    def get_weekly(
+            self,
+            year_week: Optional[str] = None, 
+            limit: int = 100
+    ) -> Dict[str, Any]: 
+        """
+        Get raw chart data.
+        Return dict for seraliziation (for cache))
+        """
+
+        if year_week is None:
+            year_week = date.today().isoformat()
+
+        query = (
+            select(WeeklyTop, Track)
+            .join(Track, WeeklyTop.track_id == Track.id)
+            .where(WeeklyTop.chart_date == year_week)
+            .order_by(WeeklyTop.rank_position)
+            .limit(limit)
+        )
+
+        result = self.session.exec(query).all()
+
+        if result is None:
+            return {"entries": [], "total_plays": 0}
+        
+        entries = []
+        total_plays = 0 
+
+        for weekly_top, track in result:
+            entry = {
+                "rank": weekly_top.rank_position, 
+                "track_id": track.id, 
+                "title": track.artist, 
+                "album": track.album,
+                "play_count": weekly_top.play_count,
+                "unique_listeners": weekly_top.unique_listeners, 
+                "avg_listen_duration": weekly_top.avg_listen_duration,
+                "trend": weekly_top.trend,
+            }
+
+            entries.append(entry)
+            total_plays += weekly_top.play_count
+
+        return {
+            "entries": entries, 
+            "total_plays": total_plays, 
+            "chart_date": year_week
+        }
+    
+    def get_montlhy(
+            self, 
+            year_month: Optional[str] = None,
+            limit: int = 100
+    ) -> Dict[str, Any]: 
+        """
+        Get raw chart data.
+        Return dict for seraliziation (for cache))
+        """
+
+        if year_month is None: 
+            year_month = date.today().isoformat()
+
+        query = (
+            select(MonthlyTop, Track)
+            .join(Track, MonthlyTop.track_id == Track.id)
+            .where(MonthlyTop.year_month == year_month)
+            .order_by(MonthlyTop.rank_position)
+            .limit(limit)
+        )
+
+        result = self.session.exec(query).all()
+
+        if result is None:
+            return {"entreis": [], "total_plays": 0}
+        
+        entries = []
+        total_plays = 0
+
+        for monthly_top, track in result:
+            entry = {
+                "rank": monthly_top.rank_position, 
+                "track_id": track.id, 
+                "title": track.artist, 
+                "album": track.album,
+                "play_count": monthly_top.play_count,
+                "unique_listeners": monthly_top.unique_listeners, 
+                "avg_listen_duration": monthly_top.avg_listen_duration,
+                "trend": monthly_top.trend,
+            }
+
+            entries.append(entry)
+            total_plays += monthly_top.play_count
+
+        return { 
+            "entries": entries, 
+            "total_plays": total_plays, 
+            "chart_date": year_month
+        }

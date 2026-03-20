@@ -27,15 +27,16 @@ class AggregationService:
                 func.count().label('play_count'), 
                 func.count(func.distinct(PlayEvent.user_id)).label('unique_listeners'),
                 func.avg(PlayEvent.duration_listened).label('avg_duration')
-            )   .where(
+            )   
+            .where(
                     and_(
                         PlayEvent.played_at >= start_dt, 
                         PlayEvent.played_at < end_dt
-                )
-                .group_by(PlayEvent.track_id)
-                .order_by(desc('play_count'))
-                .limit(100)
-            )
+                ))
+            .group_by(PlayEvent.track_id)
+            .order_by(desc('play_count'))
+            .limit(100)
+            
         )     
 
         result = self.session.exec(stats_query)

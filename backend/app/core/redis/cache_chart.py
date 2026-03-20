@@ -7,7 +7,7 @@ from datetime import date, datetime
 from typing import Optional, Any, Dict
 from ..config import settings
 
-class ChartChachServiceSync:
+class ChartCacheServiceSync:
     """
     Sync veriosn for Celery (only set data in redis)
     """
@@ -70,7 +70,7 @@ class ChartChachServiceSync:
         }
 
         try: 
-            self.redis.setes(key, self.TTL_WEEKLY, json.dumps(data, ensure_ascii=False))
+            self.redis.setex(key, self.TTL_WEEKLY, json.dumps(data, ensure_ascii=False))
             return True
         except Exception as e: 
             logger.error(f"Failed to cache weekly chart: {e}")
@@ -115,7 +115,6 @@ class ChartChachServiceSync:
             logger.error(f"Failed to invalidate cache: {e}")
             return False
 
-
 class ChartCacheServiceAsync:
     """
     For FastApi (only reading)
@@ -131,10 +130,10 @@ class ChartCacheServiceAsync:
         Get daily chart from cache
         """
 
-        key = f"charts:daily:[chart_date.isoformat()]"
+        key = f"charts:daily:{chart_date.isoformat()}"
 
         try: 
-            data = await redi.get(key)
+            data = await self.redis.get(key)
             if data: 
                 return json.loads(data)
             return None
@@ -153,7 +152,7 @@ class ChartCacheServiceAsync:
         key = f"charts:weekly:{year_week}"
 
         try: 
-            data = await redis.get(key)
+            data = await self.redis.get(key)
             return json.loads(data) if data else None
         except Exception as e: 
             logger.error(f"Redis get error: {e}")

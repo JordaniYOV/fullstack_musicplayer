@@ -8,6 +8,22 @@ from app.core.redis.redis import get_async_redis, get_sync_redis, close_async_re
 
 import sys 
 import asyncio
+import picologging as logging
+from picologging.handlers import RotatingFileHandler
+
+def setup_logger(): 
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    format = '%(asctime)s-%(name)s-%(levelname)s-%(message)s'
+
+    root_logger.addHandler(logging.StreamHandler(sys.stdout))
+    root_logger.handlers[0].setFormatter(logging.Formatter(format))
+
+    file_handler = RotatingFileHandler('app.log', maxBytes=10*1024*1024, backupCount=5)
+    file_handler.setFormatter(logging.Formatter(format))
+    root_logger.addHandler(file_handler)
+
+setup_logger()
 
 @asynccontextmanager
 async def async_redis(app: FastAPI): 

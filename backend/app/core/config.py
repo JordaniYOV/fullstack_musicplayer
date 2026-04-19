@@ -1,4 +1,5 @@
 import secrets
+import picologging as logging
 from typing import Optional
 from pydantic_settings import BaseSettings
 
@@ -23,6 +24,11 @@ class Settings(BaseSettings):
     # DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
     # ASYNC_DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/muse"
     ASYNC_DB_URL: str = f"postgresql+psycopg://postgres:1234@localhost:1234/muse"
+
+    LOGGER: logging.basicConfig(
+        level=logging.INFO, 
+        format="%(asctime)s-%(name)s-%(levelname)s-%(message)s"
+    )
 
 
 settings = Settings()

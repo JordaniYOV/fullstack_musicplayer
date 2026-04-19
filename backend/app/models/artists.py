@@ -1,6 +1,9 @@
 import uuid
-
+from typing import TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    from .albums import Album
 
 #Artist's models
 class ArtistBase(SQLModel):

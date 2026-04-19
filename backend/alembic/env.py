@@ -1,14 +1,30 @@
+import os
 from logging.config import fileConfig
-
-from app.models import SQLModel
+from sqlmodel import SQLModel
+from app.models.albums import Album, AlbumsCover, PopularAlbums
+from app.models.artists import Artist
+from app.models.playlists import Playlist
+from app.models.tracks import Track, TrackHigh, TrackLow, TrackMedium, TrendingTrack,PlayEvent, DailyTop, WeeklyTop, MonthlyTop
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
 
+
+ENV = os.getenv("ENV", "development")
+
+DB_URLS = {
+    "development": "postgresql://postgres:1234@localhost:1234/muse", 
+    "test": "postgresql+psycopg://postgres:test@localhost:5433/test_charts", 
+    "production": "",
+}
+
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+DB_URL = DB_URLS[ENV]
+config.set_main_option("sqlalchemy.url", DB_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

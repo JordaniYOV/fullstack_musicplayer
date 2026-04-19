@@ -2,10 +2,14 @@
 import redis.asyncio as aioredis
 import redis as syncredis
 import json
+import picologging as logging
 
 from datetime import date, datetime
 from typing import Optional, Any, Dict
-from ..config import settings
+
+
+
+logger = logging.getLogger(__name__)
 
 class ChartCacheServiceSync:
     """

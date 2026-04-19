@@ -1,8 +1,13 @@
 import uuid
-
+from typing import TYPE_CHECKING 
 from datetime import datetime, timedelta
 from sqlmodel import SQLModel, Field, Relationship, JSON, Column
 from pydantic import EmailStr
+
+if TYPE_CHECKING:
+    from .tracks import Track
+    from .albums import Album
+    from .playlists import Playlist
 
 # User's Models
 class UserBase(SQLModel):

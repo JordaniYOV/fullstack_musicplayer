@@ -1,8 +1,9 @@
 import uuid
-
+from typing import TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 
-
+if TYPE_CHECKING:
+    from .tracks import Track
 
 #Conecting model for tracks in playlists 
 class PlaylistTrack(SQLModel, table=True):

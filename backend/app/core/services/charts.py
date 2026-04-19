@@ -3,13 +3,12 @@ from typing import Any, Dict, Optional
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import Session
-from redis.asyncio import aioredis
+import redis.asyncio as aioredis
 
 from app.models.tracks import DailyTop, MonthlyTop, PlayEvent, Track, ChartEntry, ChartResponse, TrendingTrack, WeeklyTop
-from app.core.redis.cache_chart import ChartCacheServiceAsync, ChartChachServiceSync
+from app.core.redis.cache_chart import ChartCacheServiceAsync
 
-
-class ChartService:
+class ChartServiceAsync:
     def __init__(self, session: AsyncSession, redis: aioredis.Redis): 
         self.session = session
         self.redis = redis
@@ -49,11 +48,11 @@ class ChartService:
         
         query = (select(DailyTop, Track)
                 .join(Track, DailyTop.track_id == Track.id)
-                .where(DailyTop.data == chart_date)
+                .where(DailyTop.chart_date == chart_date)
                 .limit(limit=limit)
             )
         result = await self.session.execute(query)
-        rows = result.scalars().all()
+        rows = result.all()
 
         if not rows: 
             if chart_date == date.today(): 
@@ -72,7 +71,7 @@ class ChartService:
                 play_count=daily_top.play_count,
                 unique_listeners=daily_top.unique_listeners, 
                 trend=daily_top.trend, 
-                previous_rank = await self.get_previous_rank(daily_top.track_id, chart_date), 
+                previous_rank = await self.get_previous_rank(daily_top.track_id, chart_date, "daily"), 
             ))
             
             total_plays += daily_top.play_count
@@ -80,7 +79,7 @@ class ChartService:
         return ChartResponse(
             chart_type="daily", 
             period=chart_date.isoformat(), 
-            genereted_at=datetime.now(),
+            generated_at=datetime.now(),
             entries=entries, 
             total_plays=total_plays
         )
@@ -123,7 +122,8 @@ class ChartService:
                 artist=track.artist, 
                 play_count=weekly_top.play_count, 
                 unique_listeners=weekly_top.unique_listeners, 
-                trend=weekly_top.trend
+                trend=weekly_top.trend, 
+                previous_rank = await self.get_previous_rank(weekly_top.track_id, year_week, "weekly")
             ))
             total_plays += weekly_top.play_count
 
@@ -171,7 +171,8 @@ class ChartService:
                 title=track.title, 
                 artist=track.artist, 
                 play_count=monthly_top.play_count, 
-                unique_listeners=monthly_top.unique_listeners
+                unique_listeners=monthly_top.unique_listeners, 
+                previous_rank = await self.get_previous_rank(monthly_top.track_id, year_month, "monthly")
             ))
 
             total_plays += monthly_top.play_count
@@ -230,6 +231,7 @@ class ChartService:
         query = select(
                 PlayEvent.track_id,
                 func.count().label('play_count'),
+                func.count(func.distinct(PlayEvent.user_id)).label('unique_listeners'),
                 func.avg(PlayEvent.duration_listened).label('avg_duration')
             ).where(
                 and_(
@@ -240,13 +242,15 @@ class ChartService:
         
 
         result = await self.session.execute(query)
-        stats = result.scalars().all()
+        stats = result.all()
 
 
         track_ids = [row.track_id for row in stats]
         tracks_query = select(Track).where(Track.id.in_(track_ids))
         tracks_result = await self.session.execute(tracks_query)
-        tracks = {t.id: t for t in tracks_result.scalars().all()}
+        tracks_res = tracks_result.scalars().all()
+        print(f"Query: {tracks_res}")
+        tracks = {t.id: t for t in tracks_res}
 
         entries = []
         total_plays = 0
@@ -312,18 +316,22 @@ class ChartService:
         """
         Recieve rank position in previous period
         """
-        
-        if chart_type == 'daily':
-            prev_date = current_date - timedelta(days=1)
-            query = select(DailyTop.rank_position).where(
-                and_(
-                    DailyTop.chart_date == prev_date, 
-                    DailyTop.track_id == track_id
-                )
+        days = {
+            "daily": 1, 
+            "weekly": 7, 
+            "monthly": 30
+        }
+    
+        prev_date = current_date - timedelta(days=days.get(chart_type, 1))
+        query = select(DailyTop.rank_position).where(
+            and_(
+                DailyTop.chart_date == prev_date, 
+                DailyTop.track_id == track_id
             )
-        else: 
-            return None 
-        
+        )
+    
+        if query is None:
+            return None
         result = await self.session.execute(query)
         row = result.scalar_one_or_none()
         return row
@@ -365,7 +373,7 @@ class ChartServiceSync:
     For celery. Give aggregated data from db
     """
 
-    def __init__(self, session: Session)
+    def __init__(self, session: Session):
         self.session = session
 
     def get_daily(

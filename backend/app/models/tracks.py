@@ -1,16 +1,19 @@
 import uuid
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime, timedelta, date
 from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship, Index
 from pydantic import BaseModel
 
+if TYPE_CHECKING:
+    from .albums import Album
+    from .playlists import PlaylistTrack
 
 
 class TrackBase(SQLModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    track_name: str = Field(min_length=1, max_length=255)
+    title: str = Field(min_length=1, max_length=255)
     duration_sec: int = Field(ge=1)
     daily_plays: int = Field(default=0)
     weekly_plays: int  = Field(default=0)
@@ -18,15 +21,15 @@ class TrackBase(SQLModel):
     all_time_plays: int = Field(default=0)
     likes: int = Field(default=0)
     artist: str = Field(min_length=1, max_length=255)
+    genre: str = Field(min_length=1, max_length=255)
 
 class Track(TrackBase, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
-    # popular_tracks: 'PopularTracks' = Relationship(back_populates="track")
     track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
     track_medium: "TrackMedium" = Relationship(back_populates="track", cascade_delete=True)
     track_high: "TrackHigh" = Relationship(back_populates="track", cascade_delete=True)
     album: "Album" = Relationship(back_populates="tracks")
-    album_id: uuid.UUID = Field(foreign_key="album.id", ondelete='CASCADE')
+    album_id: uuid.UUID | None = Field(foreign_key="album.id", default=None, ondelete='CASCADE')
     playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
     
 class TrackQualityBase(SQLModel):
@@ -110,7 +113,7 @@ class MonthlyTop(SQLModel, table=True):
 
 class ChartEntry(BaseModel): 
     rank: int = Field(..., ge=1, le=100)
-    track_id: int
+    track_id: uuid.UUID
     title: str
     artist: str
     play_count: int
@@ -126,7 +129,7 @@ class ChartResponse(BaseModel):
     total_plays: int
 
 class TrendingTrack(BaseModel): 
-    track_id: int
+    track_id: uuid.UUID
     title: str
     artist: str
     current_rank: int

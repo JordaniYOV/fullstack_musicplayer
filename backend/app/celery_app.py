@@ -31,11 +31,10 @@ celery_app.conf.update(
 
     task_default_queue="default", 
     task_routes={
-        "app.tasks.update_popular_tracks.aggregate_*": {"queue": "aggregation"}
-
+        "app.tasks.update_popular_tracks.aggregate_*": {"queue": "aggregation"},
+    },
     worker_prefetch_multiplier=1, 
     worker_max_tasks_per_child=1000,
-    }
 )
 
 celery_app.conf.beat_chedule = {

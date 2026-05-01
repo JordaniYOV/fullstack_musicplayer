@@ -27,7 +27,7 @@ async def add_track(
     for file in track_files: 
         track_name = file.filename
 
-        statement = select(Track).where(Track.track_name == track_name)
+        statement = select(Track).where(Track.title == track_name)
         track_temp_obj = await session.execute(statement)
         track_temp = track_temp_obj.scalar_one_or_none()
 
@@ -40,10 +40,11 @@ async def add_track(
             duration = audio.duration_seconds
 
             track = Track(
-                track_name = track_name, 
+                title = track_name, 
                 duration_sec = duration, 
                 album_id = album_id,
                 artist = artist,
+                genre = 'indi'
             )
 
             session.add(track)

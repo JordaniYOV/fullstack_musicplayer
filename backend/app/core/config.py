@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     # ASYNC_DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/muse"
     ASYNC_DB_URL: str = f"postgresql+psycopg://postgres:1234@localhost:1234/muse"
 
-    LOGGER: logging.basicConfig = logging.basicConfig(
-        level=logging.INFO, 
-        format="%(asctime)s-%(name)s-%(levelname)s-%(message)s"
-    )
+    # LOGGER: logging.basicConfig = logging.basicConfig(
+    #     level=logging.INFO, 
+    #     format="%(asctime)s-%(name)s-%(levelname)s-%(message)s"
+    # )
 
 
 settings = Settings()

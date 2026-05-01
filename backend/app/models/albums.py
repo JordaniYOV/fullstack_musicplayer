@@ -12,7 +12,7 @@ class AlbumBase(SQLModel):
     album_name: str = Field(min_length=1, max_length=255)
     artist_name: str = Field(min_length=1, max_length=255) 
     total_tracks: int 
-    play_count: int 
+    play_count: int = Field(default=0)
     year_release: int = Field(le=3000, ge=1000)
     
 #DB model

@@ -53,7 +53,7 @@ def configure_logging(debug: bool = False):
         )
 
     logging.basicConfig(
-        format"%(message)s", 
+        format="%(message)s", 
         stream=sys.stdout,
         level=logging.DEBUG if debug else logging.INFO,
     )

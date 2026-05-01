@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Tuple
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,6 +48,26 @@ class ChartServiceAsync:
         )
 
         return event
+    
+    async def build_entries(self, rows: Sequence[Tuple[Any, Track]], chart_period: date | str, chart_type: str ): 
+        entries: list[ChartEntry] = []
+        total_plays = 0
+
+        for top, track in rows:
+            entries.append(ChartEntry(
+                rank=f"{chart_type}_top".rank_position, 
+                track_id=track.id, 
+                title=track.title, 
+                artist=track.artist, 
+                play_count=top.play_count,
+                unique_listeners=top.unique_listeners, 
+                trend=top.trend, 
+                previous_rank = await self.get_previous_rank(top, chart_period, chart_type), 
+            ))
+            
+            total_plays += top.play_count
+        return entries, total_plays
+
     @log_chart_operation(LogConfig(operation="get_daily_chart", chart_type="daily"))
     async def get_daily_chart(self, 
                               chart_date: Optional[date] = None, 
@@ -79,6 +99,7 @@ class ChartServiceAsync:
                 .where(DailyTop.chart_date == chart_date)
                 .limit(limit=limit)
             )
+        
         result = await self.session.execute(query)
         rows = result.all()
 
@@ -87,22 +108,7 @@ class ChartServiceAsync:
                 return await self.calculate_daily_chart_on_fly(chart_date, limit)
             raise ValueError(f"No chart data for {chart_date}")
         
-        entries = []
-        total_plays = 0
-
-        for daily_top, track in rows:
-            entries.append(ChartEntry(
-                rank=daily_top.rank_position, 
-                track_id=track.id, 
-                title=track.title, 
-                artist=track.artist, 
-                play_count=daily_top.play_count,
-                unique_listeners=daily_top.unique_listeners, 
-                trend=daily_top.trend, 
-                previous_rank = await self.get_previous_rank(daily_top.track_id, chart_date, "daily"), 
-            ))
-            
-            total_plays += daily_top.play_count
+        entries, total_plays = await self.build_entries(rows, chart_date, "daily")
 
         return ChartResponse(
             chart_type="daily", 
@@ -156,21 +162,7 @@ class ChartServiceAsync:
         if not rows:
             raise ValueError(f"No chart data for {year_week}")
 
-        entries = []
-        total_plays = 0
-
-        for weekly_top, track in rows: 
-            entries.append(ChartEntry(
-                rank=weekly_top.rank_position, 
-                track_id=track.id, 
-                title=track.title, 
-                artist=track.artist, 
-                play_count=weekly_top.play_count, 
-                unique_listeners=weekly_top.unique_listeners, 
-                trend=weekly_top.trend, 
-                previous_rank = await self.get_previous_rank(weekly_top.track_id, year_week, "weekly")
-            ))
-            total_plays += weekly_top.play_count
+        entries, total_plays = await self.build_entries(rows, year_week, "weekly")
 
         return ChartResponse(
             chart_type="weekly", 
@@ -223,22 +215,7 @@ class ChartServiceAsync:
         if not rows:
             raise ValueError(f"No chart data for {year_month}")
 
-        entries = []
-        total_plays = 0
-
-        for monthly_top, track in rows:
-            entries.append(ChartEntry(
-                rank=monthly_top.rank_position, 
-                track_id=track.id, 
-                title=track.title, 
-                artist=track.artist, 
-                play_count=monthly_top.play_count, 
-                unique_listeners=monthly_top.unique_listeners, 
-                previous_rank = await self.get_previous_rank(monthly_top.track_id, year_month, "monthly")
-            ))
-
-            total_plays += monthly_top.play_count
-
+        entries, total_plays = await self.build_entries(rows, year_month, "monthly")
         return ChartResponse(
             chart_type="monthly", 
             period=year_month, 
@@ -246,6 +223,7 @@ class ChartServiceAsync:
             entries=entries, 
             total_plays=total_plays
         )
+    
     @log_chart_operation(LogConfig(operation="get_trending"))
     async def get_trending(self, 
                            hours: int = 24, 
@@ -506,6 +484,27 @@ class ChartServiceSync:
         self.session = session
         self.logger = loggerSync.bind(instance_id=id(self))
 
+    def build_entries(self, result: Sequence[Tuple[Any, Track]]):
+        entries = []
+        total_plays = 0 
+
+        for top, track in result:
+            entry = {
+                "rank": top.rank_position, 
+                "track_id": track.id, 
+                "title": track.title, 
+                "album": track.album,
+                "play_count": top.play_count,
+                "unique_listeners": top.unique_listeners, 
+                "avg_listen_duration": top.avg_listen_duration,
+                "trend": top.trend, 
+            }
+            entries.append(entry)
+            total_plays += top.play_count
+            
+        return entries, total_plays
+
+
     @log_chart_operation(LogConfig(operation="get_daily_chart", chart_type="daily"))
     def get_daily(
             self, 
@@ -537,22 +536,7 @@ class ChartServiceSync:
             )
             return {"entries": [], "total_plays": 0}
         
-        entries = []
-        total_plays = 0 
-
-        for daily_top, track in result:
-            entry = {
-                "rank": daily_top.rank_position, 
-                "track_id": track.id, 
-                "title": track.artist, 
-                "album": track.album,
-                "play_count": daily_top.play_count,
-                "unique_listeners": daily_top.unique_listeners, 
-                "avg_listen_duration": daily_top.avg_listen_duration,
-                "trend": daily_top.trend, 
-            }
-            entries.append(entry)
-            total_plays += daily_top.play_count
+        entries, total_plays = self.build_entries(result, chart_date, "daily")
 
         return {
             "entries": entries, 
@@ -590,29 +574,14 @@ class ChartServiceSync:
             )
             return {"entries": [], "total_plays": 0}
         
-        entries = []
-        total_plays = 0 
-
-        for weekly_top, track in result:
-            entry = {
-                "rank": weekly_top.rank_position, 
-                "track_id": track.id, 
-                "title": track.artist, 
-                "album": track.album,
-                "play_count": weekly_top.play_count,
-                "unique_listeners": weekly_top.unique_listeners, 
-                "avg_listen_duration": weekly_top.avg_listen_duration,
-                "trend": weekly_top.trend,
-            }
-
-            entries.append(entry)
-            total_plays += weekly_top.play_count
+        entries, total_plays = self.build_entries(result)
 
         return {
             "entries": entries, 
             "total_plays": total_plays, 
             "chart_date": year_week
         }
+    
     @log_chart_operation(LogConfig(operation="get_monthly_chart", chart_type="monthly"))
     def get_montlhy(
             self, 
@@ -644,23 +613,7 @@ class ChartServiceSync:
             )
             return {"entreis": [], "total_plays": 0}
         
-        entries = []
-        total_plays = 0
-
-        for monthly_top, track in result:
-            entry = {
-                "rank": monthly_top.rank_position, 
-                "track_id": track.id, 
-                "title": track.artist, 
-                "album": track.album,
-                "play_count": monthly_top.play_count,
-                "unique_listeners": monthly_top.unique_listeners, 
-                "avg_listen_duration": monthly_top.avg_listen_duration,
-                "trend": monthly_top.trend,
-            }
-
-            entries.append(entry)
-            total_plays += monthly_top.play_count
+        entries, total_plays = self.build_entries(result)
 
         return { 
             "entries": entries, 

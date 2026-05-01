@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from sys import exc_info
+
 from typing import Any, Dict, Optional
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,14 +8,15 @@ from sqlmodel import Session
 import redis.asyncio as aioredis
 
 from app.logging_config import get_logger
+from .decorators import log_chart_operation, LogConfig
 from app.models.tracks import DailyTop, MonthlyTop, PlayEvent, Track, ChartEntry, ChartResponse, TrendingTrack, WeeklyTop
 from app.core.redis.cache_chart import ChartCacheServiceAsync
 
-logger = get_logger("app.services.charts", service="ChartServiceAsync")
+loggerAsync = get_logger("app.services.charts", service="ChartServiceAsync", engine="psycopg3")
 
 class ChartServiceAsync:
     def __init__(self, session: AsyncSession, redis: aioredis.Redis): 
-        self.logger = logger.bind(instance_id=id(self))
+        self.logger = loggerAsync.bind(instance_id=id(self))
         self.session = session
         self.redis = redis
         self.cache = ChartCacheServiceAsync(self.redis)
@@ -47,7 +48,7 @@ class ChartServiceAsync:
         )
 
         return event
-    
+    @log_chart_operation(LogConfig(operation="get_daily_chart", chart_type="daily"))
     async def get_daily_chart(self, 
                               chart_date: Optional[date] = None, 
                               limit: int = 10) -> ChartResponse: 
@@ -56,105 +57,62 @@ class ChartServiceAsync:
         """
         if chart_date is None: 
             chart_date = date.today()
-
+        cached_data = await self.cache.get_daily_chart(chart_date)
+        if cached_data:
+            self.logger.info(
+                "cache_hit", 
+                chart_type="daily", 
+                chart_date=chart_date.isoformat(),
+                source="redis",
+            )
+            return await self.format_cached_response(cached_data, "daily", chart_date.isoformat())
+        
         self.logger.info(
-            "async_chart_requested",
-            chart_type="daily", 
+            "cache_miss", 
+            chart_type="daily",
             chart_date=chart_date.isoformat(), 
-            limit=limit,
+            source="datetime",
         )
-        try:
-            cached_data = await self.cache.get_daily_chart(chart_date)
-            if cached_data:
-                self.logger.info(
-                    "cache_hit", 
-                    chart_type="daily", 
-                    chart_date=chart_date.isoformat(),
-                    source="redis",
-                )
-                return await self.format_cached_response(cached_data, "daily", chart_date.isoformat())
+
+        query = (select(DailyTop, Track)
+                .join(Track, DailyTop.track_id == Track.id)
+                .where(DailyTop.chart_date == chart_date)
+                .limit(limit=limit)
+            )
+        result = await self.session.execute(query)
+        rows = result.all()
+
+        if not rows: 
+            if chart_date == date.today(): 
+                return await self.calculate_daily_chart_on_fly(chart_date, limit)
+            raise ValueError(f"No chart data for {chart_date}")
+        
+        entries = []
+        total_plays = 0
+
+        for daily_top, track in rows:
+            entries.append(ChartEntry(
+                rank=daily_top.rank_position, 
+                track_id=track.id, 
+                title=track.title, 
+                artist=track.artist, 
+                play_count=daily_top.play_count,
+                unique_listeners=daily_top.unique_listeners, 
+                trend=daily_top.trend, 
+                previous_rank = await self.get_previous_rank(daily_top.track_id, chart_date, "daily"), 
+            ))
             
-            self.logger.info(
-                "cache_miss", 
-                chart_type="daily",
-                chart_date=chart_date.isoformat(), 
-                source="datetime",
-            )
+            total_plays += daily_top.play_count
 
-            query = (select(DailyTop, Track)
-                    .join(Track, DailyTop.track_id == Track.id)
-                    .where(DailyTop.chart_date == chart_date)
-                    .limit(limit=limit)
-                )
-            result = await self.session.execute(query)
-            rows = result.all()
-
-
-            if not rows: 
-                if chart_date == date.today(): 
-                    return await self.calculate_daily_chart_on_fly(chart_date, limit)
-                raise ValueError(f"No chart data for {chart_date}")
-            
-            entries = []
-            total_plays = 0
-
-            for daily_top, track in rows:
-                entries.append(ChartEntry(
-                    rank=daily_top.rank_position, 
-                    track_id=track.id, 
-                    title=track.title, 
-                    artist=track.artist, 
-                    play_count=daily_top.play_count,
-                    unique_listeners=daily_top.unique_listeners, 
-                    trend=daily_top.trend, 
-                    previous_rank = await self.get_previous_rank(daily_top.track_id, chart_date, "daily"), 
-                ))
-                
-                total_plays += daily_top.play_count
-
-            self.logger.info(
-                "async_chart_generated", 
-                chart_type="daily", 
-                chart_date=chart_date.isoformat(), 
-                track_count=len(entries), 
-                total_plays=total_plays,
-            )
-
-            return ChartResponse(
-                chart_type="daily", 
-                period=chart_date.isoformat(), 
-                generated_at=datetime.now(),
-                entries=entries, 
-                total_plays=total_plays
-            )
-        except ValueError as e:
-            self.logger.warning(
-                "chart_data_missing", 
-                chart_type="daily",
-                chart_date=chart_date.isoformat(), 
-                error=str(e)
-            )
-            
-            return ChartResponse(
-                chart_type="daily", 
-                period=chart_date.isoformat(), 
-                generated_at=datetime.now(), 
-                entries=[], 
-                total_plays=0,
-                )
-
-        except Exception as e:
-            self.logger.error(
-                "chart_generation_failed", 
-                chart_type="daily", 
-                chart_date=chart_date.isoformat(), 
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
-            
-            raise
-    
+        return ChartResponse(
+            chart_type="daily", 
+            period=chart_date.isoformat(), 
+            generated_at=datetime.now(),
+            entries=entries, 
+            total_plays=total_plays
+        )
+        
+    @log_chart_operation(LogConfig(operation="get_weekly_chart", chart_type="weekly"))
     async def get_weekly_chart(self, 
                                year_week: Optional[date] = None, 
                                limit: int = 10) -> ChartResponse:
@@ -165,108 +123,64 @@ class ChartServiceAsync:
         if year_week is None: 
             today = date.today()
             year_week = today.strftime("%Y-W%W")
+        cached_data = await self.cache.get_weekly_chart(year_week.isoformat())
         
+        if cached_data:
+            self.logger.info(
+                "cache_hit", 
+                chart_type="weekly", 
+                chart_date=year_week.isoformat(),
+                source="redis",
+            )
+
+            return await self.format_cached_response(cached_data, "weekly", year_week.isoformat())
         
         self.logger.info(
-            "chart_requested",
-            chart_type="weekly", 
+            "cache_miss", 
+            chart_type="weekly",
             chart_date=year_week.isoformat(), 
-            limit=limit,
+            source="datetime",
         )
 
-        try: 
-            cached_data = await self.cache.get_weekly_chart(year_week.isoformat())
-            
-            if cached_data:
-                self.logger.info(
-                    "cache_hit", 
-                    chart_type="weekly", 
-                    chart_date=year_week.isoformat(),
-                    source="redis",
-                )
+        query = ( 
+            select(WeeklyTop, Track)
+            .join(Track, WeeklyTop.track_id == Track.id)
+            .where(WeeklyTop.year_week == year_week)
+            .order_by(WeeklyTop.rank_position)
+            .limit(limit)
+        )
 
-                return await self.format_cached_response(cached_data, "weekly", year_week.isoformat())
-            
-            self.logger.info(
-                "cache_miss", 
-                chart_type="weekly",
-                chart_date=year_week.isoformat(), 
-                source="datetime",
-            )
+        result = await self.session.execute(query)
+        rows = result.scalars().all()
 
-            query = ( 
-                select(WeeklyTop, Track)
-                .join(Track, WeeklyTop.track_id == Track.id)
-                .where(WeeklyTop.year_week == year_week)
-                .order_by(WeeklyTop.rank_position)
-                .limit(limit)
-            )
+        if not rows:
+            raise ValueError(f"No chart data for {year_week}")
 
-            result = await self.session.execute(query)
-            rows = result.scalars().all()
+        entries = []
+        total_plays = 0
 
-            if not rows:
-                raise ValueError(f"No chart data for {year_week}")
+        for weekly_top, track in rows: 
+            entries.append(ChartEntry(
+                rank=weekly_top.rank_position, 
+                track_id=track.id, 
+                title=track.title, 
+                artist=track.artist, 
+                play_count=weekly_top.play_count, 
+                unique_listeners=weekly_top.unique_listeners, 
+                trend=weekly_top.trend, 
+                previous_rank = await self.get_previous_rank(weekly_top.track_id, year_week, "weekly")
+            ))
+            total_plays += weekly_top.play_count
 
-            entries = []
-            total_plays = 0
-
-            for weekly_top, track in rows: 
-                entries.append(ChartEntry(
-                    rank=weekly_top.rank_position, 
-                    track_id=track.id, 
-                    title=track.title, 
-                    artist=track.artist, 
-                    play_count=weekly_top.play_count, 
-                    unique_listeners=weekly_top.unique_listeners, 
-                    trend=weekly_top.trend, 
-                    previous_rank = await self.get_previous_rank(weekly_top.track_id, year_week, "weekly")
-                ))
-                total_plays += weekly_top.play_count
-
-            
-            self.logger.info(
-                "chart_generated", 
-                chart_type="weekly", 
-                chart_date=year_week.isoformat(), 
-                track_count=len(entries), 
-                total_plays=total_plays,
-            )
-
-            return ChartResponse(
-                chart_type="weekly", 
-                period=year_week, 
-                generated_at=datetime.now(), 
-                entries=entries, 
-                total_plays=total_plays
-            )
-        except ValueError as e:
-            self.logger.warning(
-                "chart_data_missing", 
-                chart_type="weekly",
-                chart_date=year_week.isoformat(), 
-                error=str(e)
-            )
-            
-            return ChartResponse(
-                chart_type="weekly", 
-                period=year_week.isoformat(), 
-                generated_at=datetime.now(), 
-                entries=[], 
-                total_plays=0,
-                )
-
-        except Exception as e:
-            self.logger.error(
-                "chart_generation_failed", 
-                chart_type="weekly", 
-                chart_date=year_week.isoformat(), 
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
-            raise
-    
+        return ChartResponse(
+            chart_type="weekly", 
+            period=year_week, 
+            generated_at=datetime.now(), 
+            entries=entries, 
+            total_plays=total_plays
+        )
+        
+    @log_chart_operation(LogConfig(operation="get_monthly_chart", chart_type="monthly"))
     async def get_monthly_chart(self, 
                                 year_month: Optional[str] = None, 
                                 limit: int = 100) -> ChartResponse: 
@@ -277,270 +191,169 @@ class ChartServiceAsync:
         if year_month is None:
             year_month = date.today().strftime("%Y-%m")
 
+        cached_data = await self.cache.get_monthly_chart(year_month)
+
+        if cached_data: 
+            self.logger.info(
+                "cache_hit", 
+                chart_type="weekly", 
+                chart_date=year_month.isoformat(),
+                source="redis",
+            )
+            return await self.format_cached_response(cached_data, "montlhy", year_month)
+        
         self.logger.info(
-            "chart_requested",
-            chart_type="weekly", 
+            "cache_miss", 
+            chart_type="weekly",
             chart_date=year_month.isoformat(), 
-            limit=limit,
+            source="datetime",
         )
 
-        try: 
-            cached_data = await self.cache.get_monthly_chart(year_month)
+        query = (
+            select(MonthlyTop, Track)
+            .join(Track, MonthlyTop.track_id == Track.id)
+            .where(MonthlyTop.year_month == year_month)
+            .order_by(MonthlyTop.rank_position)
+            .limit(limit)
+        )
 
-            if cached_data: 
-                self.logger.info(
-                    "cache_hit", 
-                    chart_type="weekly", 
-                    chart_date=year_month.isoformat(),
-                    source="redis",
-                )
-                return await self.format_cached_response(cached_data, "montlhy", year_month)
-            
-            self.logger.info(
-                "cache_miss", 
-                chart_type="weekly",
-                chart_date=year_month.isoformat(), 
-                source="datetime",
-            )
+        result = await self.session.execute(query)
+        rows = result.all()
 
-            query = (
-                select(MonthlyTop, Track)
-                .join(Track, MonthlyTop.track_id == Track.id)
-                .where(MonthlyTop.year_month == year_month)
-                .order_by(MonthlyTop.rank_position)
-                .limit(limit)
-            )
+        if not rows:
+            raise ValueError(f"No chart data for {year_month}")
 
-            result = await self.session.execute(query)
-            rows = result.all()
+        entries = []
+        total_plays = 0
 
-            if not rows:
-                raise ValueError(f"No chart data for {year_month}")
+        for monthly_top, track in rows:
+            entries.append(ChartEntry(
+                rank=monthly_top.rank_position, 
+                track_id=track.id, 
+                title=track.title, 
+                artist=track.artist, 
+                play_count=monthly_top.play_count, 
+                unique_listeners=monthly_top.unique_listeners, 
+                previous_rank = await self.get_previous_rank(monthly_top.track_id, year_month, "monthly")
+            ))
 
-            entries = []
-            total_plays = 0
+            total_plays += monthly_top.play_count
 
-            for monthly_top, track in rows:
-                entries.append(ChartEntry(
-                    rank=monthly_top.rank_position, 
-                    track_id=track.id, 
-                    title=track.title, 
-                    artist=track.artist, 
-                    play_count=monthly_top.play_count, 
-                    unique_listeners=monthly_top.unique_listeners, 
-                    previous_rank = await self.get_previous_rank(monthly_top.track_id, year_month, "monthly")
-                ))
-
-                total_plays += monthly_top.play_count
-
-            self.logger.info(
-                "chart_generated", 
-                chart_type="weekly", 
-                chart_date=year_month.isoformat(), 
-                track_count=len(entries), 
-                total_plays=total_plays,
-            )
-
-            return ChartResponse(
-                chart_type="monthly", 
-                period=year_month, 
-                generated_at=datetime.now(), 
-                entries=entries, 
-                total_plays=total_plays
-            )
-        except ValueError as e:
-            self.logger.warning(
-                "chart_data_missing", 
-                chart_type="weekly",
-                chart_date=year_month.isoformat(), 
-                error=str(e)
-            )
-            
-            return ChartResponse(
-                chart_type="weekly", 
-                period=year_month.isoformat(), 
-                generated_at=datetime.now(), 
-                entries=[], 
-                total_plays=0,
-                )
-
-        except Exception as e:
-            self.logger.error(
-                "chart_generation_failed", 
-                chart_type="weekly", 
-                chart_date=year_month.isoformat(), 
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
-            raise
-
-    
+        return ChartResponse(
+            chart_type="monthly", 
+            period=year_month, 
+            generated_at=datetime.now(), 
+            entries=entries, 
+            total_plays=total_plays
+        )
+    @log_chart_operation(LogConfig(operation="get_trending"))
     async def get_trending(self, 
                            hours: int = 24, 
                            limit: int = 20) -> list[TrendingTrack]:
         """
         Get trend tracks for the last hours 
         """
-        self.logger.info(
-            "trending_requested", 
-            hours=hours, 
-            limit=limit,
-        )
-        try:
-            now = datetime.now()
-            current_period = now - timedelta(hours=hours)
-            previous_period = current_period - timedelta(hours=hours)
+  
+        now = datetime.now()
+        current_period = now - timedelta(hours=hours)
+        previous_period = current_period - timedelta(hours=hours)
 
-            self.logger.info(
-                "calculating_periods", 
-                current_start=current_period.isoformat(),
-                previous_start=previous_period.isoformat(), 
-                previous_end=current_period.isoformat(),
-            )
+        current_stats = await self.get_period_stats(current_period, now)
+        previous_stats = await self.get_period_stats(previous_period, current_period)
 
-            current_stats = await self.get_period_stats(current_period, now)
-            previous_stats = await self.get_period_stats(previous_period, current_period)
+        trending = []
+        for track_id, current in current_stats.items(): 
+            previous = previous_stats.get(track_id, {'plays': 0, 'rank': 999})
+            
+            if current['plays'] > 10: 
+                velocity = (current['plays'] - previous['plays']) / max(previous['plays'], 1)
 
-            self.logger.info(
-                "period_stats_calculated", 
-                current_tracks=len(current_stats), 
-                previous_tracks=len(previous_stats),
-            )
+                if velocity > 0.5:
 
-            trending = []
-            for track_id, current in current_stats.items(): 
-                previous = previous_stats.get(track_id, {'plays': 0, 'rank': 999})
-                
-                if current['plays'] > 10: 
-                    velocity = (current['plays'] - previous['plays']) / max(previous['plays'], 1)
+                    trending.append(TrendingTrack(
+                        track_id=track_id, 
+                        title=current['title'],
+                        artist=current['artist'], 
+                        current_rank=current['rank'], 
+                        previous_rank=previous['rank'] if previous['plays'] > 0 else None, 
+                        position_change=previous['rank'] - current['rank'] if previous['plays'] > 0 else 999, 
+                        velocity=velocity
+                    ))
 
-                    if velocity > 0.5:
+        return sorted(trending, key=lambda x:x.velocity, reverse=True)[:limit]
 
-                        trending.append(TrendingTrack(
-                            track_id=track_id, 
-                            title=current['title'],
-                            artist=current['artist'], 
-                            current_rank=current['rank'], 
-                            previous_rank=previous['rank'] if previous['plays'] > 0 else None, 
-                            position_change=previous['rank'] - current['rank'] if previous['plays'] > 0 else 999, 
-                            velocity=velocity
-                        ))
-
-            result = sorted(trending, key=lambda x:x.velocity, reverse=True)[:limit]
-
-            self.logger.info(
-                "trending_calculated", 
-                total_candidates=len(trending), 
-                returned_count=len(result), 
-                top_velocity=result[0].velocity if result else None,
-            )
-
-            return result
-        except Exception as e:
-            self.logger.error(
-                "trending_calculation_failed", 
-                hours=hours, 
-                limit=limit,
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
-            raise
-
+    @log_chart_operation(LogConfig(operation="calculation_on_fly", chart_type='daily'))   
     async def calculate_daily_chart_on_fly(self, chart_date: date, limit: int): 
         """
         Data agregation for current day
         """
+
+        start_dt = datetime.combine(chart_date, datetime.min.time())
+        end_dt = start_dt + timedelta(days=1)
+
         self.logger.info(
-            "on_fly_calculation_started", 
-            chart_date=chart_date.isoformat(), 
-            limit=limit,
+            "gathering_play_events", 
+            start=start_dt.isoformat(), 
+            end=end_dt.isoformat(),
         )
 
-        try:
-            start_dt = datetime.combine(chart_date, datetime.min.time())
-            end_dt = start_dt + timedelta(days=1)
-
-            self.logger.info(
-                "gathering_play_events", 
-                start=start_dt.isoformat(), 
-                end=end_dt.isoformat(),
-            )
-
-            query = select(
-                    PlayEvent.track_id,
-                    func.count().label('play_count'),
-                    func.count(func.distinct(PlayEvent.user_id)).label('unique_listeners'),
-                    func.avg(PlayEvent.duration_listened).label('avg_duration')
-                ).where(
-                    and_(
-                        PlayEvent.played_at >= start_dt, 
-                        PlayEvent.played_at < end_dt
-                    )
-                ).group_by(PlayEvent.track_id).order_by(desc('play_count')).limit(limit)
-            
-            result = await self.session.execute(query)
-            stats = result.all()
-
-            self.logger.info(
-                "plays_events_gathered", 
-                events_found=len(stats),
-            )
-
-            track_ids = [row.track_id for row in stats]
-            tracks_query = select(Track).where(Track.id.in_(track_ids))
-            tracks_result = await self.session.execute(tracks_query)
-            tracks_res = tracks_result.scalars().all()
-            print(f"Query: {tracks_res}")
-            tracks = {t.id: t for t in tracks_res}
-
-            self.logger.info(
-                "tracks_details_fetched", 
-                tracks_resolved=len(tracks),
-            )
-
-            entries = []
-            total_plays = 0
-            
-            for rank, row in enumerate(stats, 1): 
-                track = tracks.get(row.track_id)
-                if track: 
-                    entries.append(ChartEntry(
-                        rank=rank, 
-                        track_id=track.id, 
-                        title=track.title,
-                        artist=track.artist, 
-                        play_count=row.play_count,
-                        unique_listeners=row.unique_listeners, 
-                        trend=None
-                    ))
-                    total_plays += row.play_count
-
-            self.logger.info(
-                "on_fly_calculation_completed",
-                chart_date=chart_date.isoformat(),
-                track_count=lent(entries), 
-                total_plays=total_plays,
-            )
-
-            return ChartResponse(
-                chart_type="daily", 
-                period=chart_date.isoformat(), 
-                generated_at=datetime.now(),
-                entries=entries, 
-                total_plays=total_plays
-            )
-        except Exception as e:
-            self.logger.error(
-                "on_fly_calculation_failed", 
-                chart_date=chart_date.isoformat(), 
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
-            raise
+        query = select(
+                PlayEvent.track_id,
+                func.count().label('play_count'),
+                func.count(func.distinct(PlayEvent.user_id)).label('unique_listeners'),
+                func.avg(PlayEvent.duration_listened).label('avg_duration')
+            ).where(
+                and_(
+                    PlayEvent.played_at >= start_dt, 
+                    PlayEvent.played_at < end_dt
+                )
+            ).group_by(PlayEvent.track_id).order_by(desc('play_count')).limit(limit)
         
+        result = await self.session.execute(query)
+        stats = result.all()
+
+        self.logger.info(
+            "plays_events_gathered", 
+            events_found=len(stats),
+        )
+
+        track_ids = [row.track_id for row in stats]
+        tracks_query = select(Track).where(Track.id.in_(track_ids))
+        tracks_result = await self.session.execute(tracks_query)
+        tracks_res = tracks_result.scalars().all()
+        print(f"Query: {tracks_res}")
+        tracks = {t.id: t for t in tracks_res}
+
+        self.logger.info(
+            "tracks_details_fetched", 
+            tracks_resolved=len(tracks),
+        )
+
+        entries = []
+        total_plays = 0
+        
+        for rank, row in enumerate(stats, 1): 
+            track = tracks.get(row.track_id)
+            if track: 
+                entries.append(ChartEntry(
+                    rank=rank, 
+                    track_id=track.id, 
+                    title=track.title,
+                    artist=track.artist, 
+                    play_count=row.play_count,
+                    unique_listeners=row.unique_listeners, 
+                    trend=None
+                ))
+                total_plays += row.play_count
+
+        return ChartResponse(
+            chart_type="daily", 
+            period=chart_date.isoformat(), 
+            generated_at=datetime.now(),
+            entries=entries, 
+            total_plays=total_plays
+        )
+
     async def get_period_stats(self, start: datetime, end: datetime):
         """
         Method for recieve period stats
@@ -617,7 +430,7 @@ class ChartServiceAsync:
         result = await self.session.execute(query)
         row = result.scalar_one_or_none()
 
-        self.looger.debug(
+        self.logger.debug(
             "previous_rank_result", 
             track_id=track_id,
             previous_rank=row,
@@ -682,6 +495,8 @@ class ChartServiceAsync:
             )
             raise ValueError(f"Corrupted cache data for {chart_type}/{period}: {e}")
 
+loggerSync = get_logger("app.services.charts", service="ChartServiceSync", engine="psycopg3")
+
 class ChartServiceSync:
     """
     For celery. Give aggregated data from db
@@ -689,7 +504,9 @@ class ChartServiceSync:
 
     def __init__(self, session: Session):
         self.session = session
+        self.logger = loggerSync.bind(instance_id=id(self))
 
+    @log_chart_operation(LogConfig(operation="get_daily_chart", chart_type="daily"))
     def get_daily(
             self, 
             chart_date: Optional[date] = None, 
@@ -699,85 +516,50 @@ class ChartServiceSync:
         Get raw chart data.
         Return dict for seraliziation (for cache))
         """
+        if chart_date is None:
+            chart_date = date.today()
 
-        self.logger.info(
-            "sync_chart_requested",
-            chart_type="daily",
-            chart_date=chart_date.isoformat(), 
-            limit=limit,
+        query = (
+            select(DailyTop, Track)
+            .join(Track, DailyTop.track_id == Track.id)
+            .where(DailyTop.chart_date == chart_date)
+            .order_by(DailyTop.rank_position)
+            .limit(limit)
         )
 
-        try:
-            if chart_date is None:
-                chart_date = date.today()
+        result = self.session.exec(query).all()
 
-            query = (
-                select(DailyTop, Track)
-                .join(Track, DailyTop.track_id == Track.id)
-                .where(DailyTop.chart_date == chart_date)
-                .order_by(DailyTop.rank_position)
-                .limit(limit)
-            )
-
-            result = self.session.exec(query).all()
-
-            if not result:
-                self.logger.warning(
-                    "sync_chart_empty", 
-                    chart_type="daily", 
-                    chart_date=chart_date.isoformat(),
-                )
-                return {"entries": [], "total_plays": 0}
-            
-            entries = []
-            total_plays = 0 
-
-            for daily_top, track in result:
-                entry = {
-                    "rank": daily_top.rank_position, 
-                    "track_id": track.id, 
-                    "title": track.artist, 
-                    "album": track.album,
-                    "play_count": daily_top.play_count,
-                    "unique_listeners": daily_top.unique_listeners, 
-                    "avg_listen_duration": daily_top.avg_listen_duration,
-                    "trend": daily_top.trend, 
-                }
-                entries.append(entry)
-                total_plays += daily_top.play_count
-            
-            self.logger.info(
-                "sync_chart_generated", 
+        if not result:
+            self.logger.warning(
+                "sync_chart_empty", 
                 chart_type="daily", 
-                chart_date=chart_date.isoformat(), 
-                track_count=len(entries), 
-                total_plays=total_plays,
+                chart_date=chart_date.isoformat(),
             )
+            return {"entries": [], "total_plays": 0}
+        
+        entries = []
+        total_plays = 0 
 
-            return {
-                "entries": entries, 
-                "total_plays": total_plays, 
-                "chart_date": chart_date.isoformat(),
+        for daily_top, track in result:
+            entry = {
+                "rank": daily_top.rank_position, 
+                "track_id": track.id, 
+                "title": track.artist, 
+                "album": track.album,
+                "play_count": daily_top.play_count,
+                "unique_listeners": daily_top.unique_listeners, 
+                "avg_listen_duration": daily_top.avg_listen_duration,
+                "trend": daily_top.trend, 
             }
-        except SQLAlchemyError as e:
-            self.logger.error(
-                "sync_chart_db_error", 
-                chart_type="daily", 
-                chart_date=chart_date.isoformat(), 
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,   
-            )
-        except Exception as e:
-            self.logger.error(
-                "sync_chart_unexpected_error", 
-                chart_type="daily", 
-                chart_date=chart_date.isoformat(), 
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
+            entries.append(entry)
+            total_plays += daily_top.play_count
 
+        return {
+            "entries": entries, 
+            "total_plays": total_plays, 
+            "chart_date": chart_date.isoformat(),
+        }
+    @log_chart_operation(LogConfig(operation="get_weekly_chart", chart_type="weekly"))
     def get_weekly(
             self,
             year_week: Optional[str] = None, 
@@ -787,87 +569,51 @@ class ChartServiceSync:
         Get raw chart data.
         Return dict for seraliziation (for cache))
         """
+        if year_week is None:
+            year_week = date.today().isoformat()
 
-        self.logger.info(
-            "sync_chart_requsted", 
-            chart_type="weekly", 
-            chart_period=year_week,
-            limit=limit,
+        query = (
+            select(WeeklyTop, Track)
+            .join(Track, WeeklyTop.track_id == Track.id)
+            .where(WeeklyTop.chart_date == year_week)
+            .order_by(WeeklyTop.rank_position)
+            .limit(limit)
         )
 
-        try:
-            if year_week is None:
-                year_week = date.today().isoformat()
+        result = self.session.exec(query).all()
 
-            query = (
-                select(WeeklyTop, Track)
-                .join(Track, WeeklyTop.track_id == Track.id)
-                .where(WeeklyTop.chart_date == year_week)
-                .order_by(WeeklyTop.rank_position)
-                .limit(limit)
-            )
-
-            result = self.session.exec(query).all()
-
-            if result is None:
-                self.logger.warning(
-                    "sync_chart_empty", 
-                    chart_type="weekly", 
-                    chart_period=year_week, 
-                )
-                return {"entries": [], "total_plays": 0}
-            
-            entries = []
-            total_plays = 0 
-
-            for weekly_top, track in result:
-                entry = {
-                    "rank": weekly_top.rank_position, 
-                    "track_id": track.id, 
-                    "title": track.artist, 
-                    "album": track.album,
-                    "play_count": weekly_top.play_count,
-                    "unique_listeners": weekly_top.unique_listeners, 
-                    "avg_listen_duration": weekly_top.avg_listen_duration,
-                    "trend": weekly_top.trend,
-                }
-
-                entries.append(entry)
-                total_plays += weekly_top.play_count
-
-            self.logger.info(
-                "sync_chart_generated", 
+        if result is None:
+            self.logger.warning(
+                "sync_chart_empty", 
                 chart_type="weekly", 
                 chart_period=year_week, 
-                track_count=len(entries), 
-                total_plays=total_plays,
             )
-
-            return {
-                "entries": entries, 
-                "total_plays": total_plays, 
-                "chart_date": year_week
-            }
+            return {"entries": [], "total_plays": 0}
         
-        except SQLAlchemyError as e:
-            self.logger.error(
-                "sync_chart_db_error",
-                chart_type="weekly", 
-                chart_period=year_week, 
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
-        except Exception as e:
-            self.logger.error(
-                "sync_chart_unexpected_error", 
-                chart_type="weekly", 
-                chart_period=year_week,
-                error_type=type(e).__name__, 
-                error_message=str(e), 
-                exc_info=True,
-            )
+        entries = []
+        total_plays = 0 
 
+        for weekly_top, track in result:
+            entry = {
+                "rank": weekly_top.rank_position, 
+                "track_id": track.id, 
+                "title": track.artist, 
+                "album": track.album,
+                "play_count": weekly_top.play_count,
+                "unique_listeners": weekly_top.unique_listeners, 
+                "avg_listen_duration": weekly_top.avg_listen_duration,
+                "trend": weekly_top.trend,
+            }
+
+            entries.append(entry)
+            total_plays += weekly_top.play_count
+
+        return {
+            "entries": entries, 
+            "total_plays": total_plays, 
+            "chart_date": year_week
+        }
+    @log_chart_operation(LogConfig(operation="get_monthly_chart", chart_type="monthly"))
     def get_montlhy(
             self, 
             year_month: Optional[str] = None,
@@ -877,83 +623,48 @@ class ChartServiceSync:
         Get raw chart data.
         Return dict for seraliziation (for cache))
         """
+        if year_month is None: 
+            year_month = date.today().isoformat()
 
-        self.logger.info(
-            "sync_chart_requested", 
-            chart_type="monthly", 
-            chart_period=year_month, 
-            limit=limit,
+        query = (
+            select(MonthlyTop, Track)
+            .join(Track, MonthlyTop.track_id == Track.id)
+            .where(MonthlyTop.year_month == year_month)
+            .order_by(MonthlyTop.rank_position)
+            .limit(limit)
         )
 
-        try:
-            if year_month is None: 
-                year_month = date.today().isoformat()
+        result = self.session.exec(query).all()
 
-            query = (
-                select(MonthlyTop, Track)
-                .join(Track, MonthlyTop.track_id == Track.id)
-                .where(MonthlyTop.year_month == year_month)
-                .order_by(MonthlyTop.rank_position)
-                .limit(limit)
-            )
-
-            result = self.session.exec(query).all()
-
-            if result is None:
-                self.logger.warning(
-                    "sync_chart_empty", 
-                    chart_type="monthly", 
-                    chart_prtiod=year_month,
-                )
-                return {"entreis": [], "total_plays": 0}
-            
-            entries = []
-            total_plays = 0
-
-            for monthly_top, track in result:
-                entry = {
-                    "rank": monthly_top.rank_position, 
-                    "track_id": track.id, 
-                    "title": track.artist, 
-                    "album": track.album,
-                    "play_count": monthly_top.play_count,
-                    "unique_listeners": monthly_top.unique_listeners, 
-                    "avg_listen_duration": monthly_top.avg_listen_duration,
-                    "trend": monthly_top.trend,
-                }
-
-                entries.append(entry)
-                total_plays += monthly_top.play_count
-
-            self.logger.info(
-                "chart_sync_generated", 
-                chart_type="monthly",
-                chart_period=year_month,
-                track_count=len(entries), 
-                total_plays=total_plays,
-            )
-
-            return { 
-                "entries": entries, 
-                "total_plays": total_plays, 
-                "chart_date": year_month
-            }
-        except SQLAlchemyError as e:
-            self.logger.error(
-                "sync_chart_db_error", 
-                chart_type="monthly",
-                chart_period=year_month,
-                error_type=type(e).__name__,
-                error_message=str(e),
-                exc_info=True,
-            )
-            raise
-        except Exception as e:
-            self.logger.error(
-                "sync_chart_unexpected_error", 
+        if result is None:
+            self.logger.warning(
+                "sync_chart_empty", 
                 chart_type="monthly", 
-                chart_period=year_month,
-                erorr_type=type(e).__name__, 
-                erorr_message=str(e),
-                exc_info=True,
+                chart_prtiod=year_month,
             )
+            return {"entreis": [], "total_plays": 0}
+        
+        entries = []
+        total_plays = 0
+
+        for monthly_top, track in result:
+            entry = {
+                "rank": monthly_top.rank_position, 
+                "track_id": track.id, 
+                "title": track.artist, 
+                "album": track.album,
+                "play_count": monthly_top.play_count,
+                "unique_listeners": monthly_top.unique_listeners, 
+                "avg_listen_duration": monthly_top.avg_listen_duration,
+                "trend": monthly_top.trend,
+            }
+
+            entries.append(entry)
+            total_plays += monthly_top.play_count
+
+        return { 
+            "entries": entries, 
+            "total_plays": total_plays, 
+            "chart_date": year_month
+        }
+        

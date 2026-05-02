@@ -65,8 +65,8 @@ async def get_async_redis() -> aioredis.Redis:
             settings.redis_url,
             max_connections=settings.redis_max_connections,
             decode_responses=True, 
-           
         )
+        
     return async_redis_client
 
 async def close_async_redis():

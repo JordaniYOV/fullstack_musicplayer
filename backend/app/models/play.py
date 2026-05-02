@@ -37,7 +37,7 @@ class CounterUpdate(BaseModel):
     monthly_plays: int
     all_time_plays: int
 
-class PLayEventPublic(BaseModel): 
+class PlayEventPublic(BaseModel): 
     """Returned by GET /charts/play/history (per-user history endpoint)"""
 
     event_id: uuid.UUID

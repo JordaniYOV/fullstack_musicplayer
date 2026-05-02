@@ -13,7 +13,6 @@ from app.core.db import async_engine
 from app.core.services.play_event import PlayEventService
 from app.models.users import User
 from app.core.schemas import TokenPayload
-from app.core.redis.redis import get_async_redis
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 from jwt.exceptions import InvalidTokenError
@@ -30,20 +29,18 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSession(async_engine) as session: 
         yield session
 
-# async def get_redis() -> AsyncGenerator[redis.Redis, None]: 
-#     """
-#     Dependency to get redis client
-#     Use to inject into endpoints
-#     """
-#     client = await redis_client.get_client()
-    
-#     try: 
-#         yield client
-#     finally: 
-#         pass
+async def get_redis() -> AsyncGenerator[aioredis.Redis, None]: 
+    """
+    Dependency to get redis client
+    Use to inject into endpoints
+    """
+    from app.core.redis.redis import get_async_redis
+    redis = await get_async_redis()
+    return redis
 
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
+RedisDep = Annotated[aioredis.Redis, Depends(get_redis)]
 
 
 async def get_current_user(session: SessionDep, token: TokenDep) -> User:
@@ -71,13 +68,11 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 async def get_play_event_service(
         session: SessionDep,
-        redis: aioredis, 
+        redis: RedisDep, 
 ) -> PlayEventService:
     """
     Inject PlayEventService with its dependencies
     """
-
-    redis = await get_async_redis()
 
     return PlayEventService(session=session, redis=redis, kafka_producer=None)
 

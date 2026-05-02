@@ -1,5 +1,6 @@
 
 from collections.abc import Generator
+from re import A
 from typing import Annotated, AsyncGenerator
 
 
@@ -7,11 +8,12 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 from fastapi import Depends, HTTPException, status
 
 import jwt
-import redis.asyncio as redis
+import redis.asyncio as aioredis
 from app.core.db import async_engine
+from app.core.services.play_event import PlayEventService
 from app.models.users import User
 from app.core.schemas import TokenPayload
-# from app.core.redis.redis import redis_client
+from app.core.redis.redis import get_async_redis
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 from jwt.exceptions import InvalidTokenError
@@ -65,3 +67,18 @@ async def get_current_user(session: SessionDep, token: TokenDep) -> User:
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+async def get_play_event_service(
+        session: SessionDep,
+        redis: aioredis, 
+) -> PlayEventService:
+    """
+    Inject PlayEventService with its dependencies
+    """
+
+    redis = await get_async_redis()
+
+    return PlayEventService(session=session, redis=redis, kafka_producer=None)
+
+PlayEventServiceDep = Annotated(PlayEventService, Depends(get_play_event_service))

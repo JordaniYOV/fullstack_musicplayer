@@ -1,11 +1,11 @@
+import platform
+import asyncio
 
 from sqlmodel import create_engine
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
-
-import asyncio
 
 async_engine = create_async_engine(
     settings.ASYNC_DB_URL, 
@@ -14,7 +14,8 @@ async_engine = create_async_engine(
     max_overflow=10, 
     pool_pre_ping=True)
 
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 sync_engine = create_engine(
     settings.ASYNC_DB_URL, 

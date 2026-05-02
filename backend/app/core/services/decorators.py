@@ -93,7 +93,7 @@ def log_chart_operation(config: LogConfig):
             limit = kwargs.get('limit') or (args[1] if len(args) > 1 else None)
 
             context = { 
-                "operation": config.opertaion, 
+                "operation": config.operation, 
                 "chart_type": config.chart_type,
             }
             if chart_date:
@@ -158,30 +158,8 @@ def log_chart_operation(config: LogConfig):
                 raise 
         
         import asyncio
-        if asyncio.iscoroutine(func):
+        if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
     
-    return decorator
-
-    """For complicated methods"""
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        async def wrapper(self, *args, **kwargs):
-            log = getattr(self, 'logger', logger)
-            log.debug(f"{operation_name}_started")
-            
-            try:
-                result = await func(self, *args, **kwargs)
-                log.debug(f"{operation_name}_completed", result_type=type(result).__name__)
-                return result
-            except Exception as e:
-                log.error(
-                    f"{operation_name}_failed",
-                    error_type=type(e).__name__,
-                    error_message=str(e),
-                )
-                raise
-        
-        return wrapper
     return decorator

@@ -61,7 +61,7 @@ class AggregationService:
                 chart_date=target_date, 
                 track_id=row.track_id, 
                 play_count=row.play_count,
-                unique_listeners=row.unique_listensers, 
+                unique_listeners=row.unique_listeners, 
                 avg_listen_duration=float(row.avg_duration or 0), 
                 rank_position=rank, 
                 trend=trend
@@ -69,9 +69,9 @@ class AggregationService:
 
             self.session.add(daily_top)
 
-            self.session.commit()
-            print(f"Aggregated daily chart for {target_date}: {len(rows)} tracks")
-            return len(rows)
+        self.session.commit()
+        print(f"Aggregated daily chart for {target_date}: {len(rows)} tracks")
+        return len(rows)
         
     def aggregate_weekly(self, target_week: Optional[date] = None): 
         """
@@ -82,7 +82,7 @@ class AggregationService:
             target_week = today.strftime("%Y-W%W")
 
             if today.weekday() != 6:
-                target_week = (today - timedelta(days=7).strftime("%Y-W%W"))
+                target_week = (today - timedelta(days=7)).strftime("%Y-W%W")
 
         year, week = map(int, target_week.split('-W'))
         week_start = datetime.strptime(f'{year}-W{week}-1', '%Y-W%W-%W').date()
@@ -115,7 +115,7 @@ class AggregationService:
                 year_week=target_week, 
                 week_start=week_start,
                 week_end=week_end, 
-                track_id=row.track.id, 
+                track_id=row.track_id, 
                 play_count=row.total_plays, 
                 unique_listeners=row.total_listeners, 
                 rank_position=rank
@@ -133,7 +133,7 @@ class AggregationService:
         """
 
         if target_month is None:
-            target_month = date.today().strftime('%Y-%M')
+            target_month = date.today().strftime('%Y-%m')
             
         year, month = map(int,target_month.split('-'))
         month_start = date(year, month, 1)
@@ -152,7 +152,7 @@ class AggregationService:
                 .where(
                     and_(
                         DailyTop.chart_date >= month_start, 
-                        DailyTop.chart_date < month_end
+                        DailyTop.chart_date <= month_end
                     )
                 )
                 .group_by(DailyTop.track_id)

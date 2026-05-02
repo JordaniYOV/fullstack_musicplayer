@@ -88,7 +88,7 @@ def aggregate_daily_task(self,
 
             redis = sync_redis_client
             cache_service = ChartCacheServiceSync(redis)
-            cached = cache_service.save_daily_chart(target_date, pop_tracks["entries"], pop_tracks["total_plays"])
+            cached = cache_service.save_daily_chart(actual_date, pop_tracks["entries"], pop_tracks["total_plays"])
 
             if cached: 
                 return {
@@ -106,18 +106,15 @@ def aggregate_daily_task(self,
         except MaxRetriesExceededError: 
             logger.critical(f"Daily aggregation failed after 3 retries: {exc}")
 
-@celery_app.task(bind=True)
+@celery_app.task(bind=True, max_retries=3, default_retry_delay=300, queue="aggregation")
 def aggregate_weekly_task(self, target_week_str: Optional[str] = None): 
     """
     Aggregate weekly chart
     """
 
-
     try: 
-        if target_week_str: 
-            target_week = date.fromisoformat(target_week_str)
-        else: 
-            target_week = date.today()
+
+        target_week: Optional[str] = target_week_str
 
         logger.info(f"Starting Aggregation weekly aggregation for {target_week or 'last_week'}")
 
@@ -126,11 +123,12 @@ def aggregate_weekly_task(self, target_week_str: Optional[str] = None):
             count = agg_service.aggregate_weekly(target_week)
 
             chart_service = ChartServiceSync(session)
+            resolved_week = target_week or date.today().strftime("%Y-W%W")
             pop_tracks = chart_service.get_weekly(target_week)
 
             redis = sync_redis_client
             cache_service = ChartCacheServiceSync(redis)
-            cached = cache_service.save_weekly_chart(target_week, pop_tracks["entries"], pop_tracks["total_plays"])
+            cached = cache_service.save_weekly_chart(resolved_week, pop_tracks["entries"], pop_tracks["total_plays"])
 
             if cached:
                 return {
@@ -155,12 +153,8 @@ def aggregate_monthly_task(self, target_month_str: Optional[str] = None):
     aggregate monthly top
     """
 
-    
     try:
-        if target_month_str:
-            target_month = date.fromisoformat(target_month_str)
-        else:
-            target_month = date.today()
+        target_month: Optional[str] = target_month_str
 
         logger.info(f"Starting monthly aggregation for {target_month or 'last_month'}")
 
@@ -173,7 +167,7 @@ def aggregate_monthly_task(self, target_month_str: Optional[str] = None):
 
             redis = sync_redis_client
             cache_service = ChartCacheServiceSync(redis)
-            cached = cache_service.save_monthly_chart(target_month, pop_tracks["entries"], pop_tracks["total_tracks"])
+            cached = cache_service.save_monthly_chart(target_month, pop_tracks["entries"], pop_tracks["total_plays"])
 
             if cached:
                 return {

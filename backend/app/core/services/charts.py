@@ -55,7 +55,7 @@ class ChartServiceAsync:
 
         for top, track in rows:
             entries.append(ChartEntry(
-                rank=f"{chart_type}_top".rank_position, 
+                rank=top.rank_position, 
                 track_id=track.id, 
                 title=track.title, 
                 artist=track.artist, 
@@ -120,7 +120,7 @@ class ChartServiceAsync:
         
     @log_chart_operation(LogConfig(operation="get_weekly_chart", chart_type="weekly"))
     async def get_weekly_chart(self, 
-                               year_week: Optional[date] = None, 
+                               year_week: Optional[str] = None, 
                                limit: int = 10) -> ChartResponse:
         """
         Get weekly top
@@ -129,7 +129,7 @@ class ChartServiceAsync:
         if year_week is None: 
             today = date.today()
             year_week = today.strftime("%Y-W%W")
-        cached_data = await self.cache.get_weekly_chart(year_week.isoformat())
+        cached_data = await self.cache.get_weekly_chart(year_week)
         
         if cached_data:
             self.logger.info(
@@ -157,7 +157,7 @@ class ChartServiceAsync:
         )
 
         result = await self.session.execute(query)
-        rows = result.scalars().all()
+        rows = result.all()
 
         if not rows:
             raise ValueError(f"No chart data for {year_week}")
@@ -189,7 +189,7 @@ class ChartServiceAsync:
             self.logger.info(
                 "cache_hit", 
                 chart_type="weekly", 
-                chart_date=year_month.isoformat(),
+                chart_date=year_month,
                 source="redis",
             )
             return await self.format_cached_response(cached_data, "montlhy", year_month)
@@ -197,7 +197,7 @@ class ChartServiceAsync:
         self.logger.info(
             "cache_miss", 
             chart_type="weekly",
-            chart_date=year_month.isoformat(), 
+            chart_date=year_month, 
             source="datetime",
         )
 
@@ -542,6 +542,7 @@ class ChartServiceSync:
             "entries": entries, 
             "total_plays": total_plays, 
             "chart_date": chart_date.isoformat(),
+            "generated_at": datetime.now().isoformat(),
         }
     @log_chart_operation(LogConfig(operation="get_weekly_chart", chart_type="weekly"))
     def get_weekly(
@@ -559,7 +560,7 @@ class ChartServiceSync:
         query = (
             select(WeeklyTop, Track)
             .join(Track, WeeklyTop.track_id == Track.id)
-            .where(WeeklyTop.chart_date == year_week)
+            .where(WeeklyTop.year_week == year_week)
             .order_by(WeeklyTop.rank_position)
             .limit(limit)
         )
@@ -579,11 +580,12 @@ class ChartServiceSync:
         return {
             "entries": entries, 
             "total_plays": total_plays, 
-            "chart_date": year_week
+            "chart_date": year_week, 
+            "generated_at": datetime.now().isoformat(),
         }
     
     @log_chart_operation(LogConfig(operation="get_monthly_chart", chart_type="monthly"))
-    def get_montlhy(
+    def get_monthly(
             self, 
             year_month: Optional[str] = None,
             limit: int = 100
@@ -593,7 +595,7 @@ class ChartServiceSync:
         Return dict for seraliziation (for cache))
         """
         if year_month is None: 
-            year_month = date.today().isoformat()
+            year_month = date.today().strftime("%Y-%m")
 
         query = (
             select(MonthlyTop, Track)
@@ -618,6 +620,7 @@ class ChartServiceSync:
         return { 
             "entries": entries, 
             "total_plays": total_plays, 
-            "chart_date": year_month
+            "chart_date": year_month, 
+            "generated_at": datetime.now().isoformat(),
         }
         

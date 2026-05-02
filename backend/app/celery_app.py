@@ -37,7 +37,7 @@ celery_app.conf.update(
     worker_max_tasks_per_child=1000,
 )
 
-celery_app.conf.beat_chedule = {
+celery_app.conf.beat_schedule = {
     'update_daily_top': { 
         'task': 'tasks.update_popular_tracks.aggregate_daily_task',
         'schedule': crontab(hour=3, minute=0),

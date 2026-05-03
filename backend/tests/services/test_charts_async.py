@@ -61,9 +61,9 @@ async def test_get_daily_chart_from_cache(service, mock_cache):
 async def test_get_daily_chart_from_db(service, async_session, sample_tracks): 
     """Recieve chart from BD test (cache miss)"""
     from app.models.tracks import DailyTop
-
+    chart_date = date.today() - timedelta(days=1)
     daily_top = DailyTop(
-        chart_date=date.today() - timedelta(days=1), 
+        chart_date=chart_date, 
         track_id=sample_tracks[0].id, 
         play_count=100, 
         unique_listeners=50, 
@@ -74,7 +74,7 @@ async def test_get_daily_chart_from_db(service, async_session, sample_tracks):
     async_session.add(daily_top)
     await async_session.commit()
 
-    result = await service.get_daily_chart(date.today() - timedelta(days=1))
+    result = await service.get_daily_chart(chart_date)
 
     assert isinstance(result, ChartResponse)
     assert result.entries[0].track_id == sample_tracks[0].id

@@ -1,5 +1,7 @@
 import functools
 import time
+from datetime import date
+from datetime import datetime as dt
 
 from typing import Callable, Any, Optional
 # from dataclasses import dataclass
@@ -7,6 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.logging_config import get_logger
+from app.models.tracks import ChartResponse
+
 
 logger = get_logger("app.service.decorators")
 
@@ -25,7 +29,7 @@ def log_chart_operation(config: LogConfig):
         async def async_wrapper(self, *args, **kwargs): 
             log = getattr(self, 'logger', logger)
 
-            chart_date = kwargs.get('chart_date') or (args[0] if args else None)
+            chart_date: date = kwargs.get('chart_date') or (args[0] if args else None)
             limit = kwargs.get('limit') or (args[1] if len(args) > 1 else None)
 
             context = { 
@@ -36,6 +40,7 @@ def log_chart_operation(config: LogConfig):
                 context["chart_date" if config.chart_type == 'daily' else "chart_period"] = (
                     chart_date.isoformat() if hasattr(chart_date, 'isoformat') else str(chart_date)
                 )
+        
             if limit:
                 context["limit"] = limit
             
@@ -64,13 +69,13 @@ def log_chart_operation(config: LogConfig):
                     "chart_data_missing",
                     **{**context, "error": str(e), "duration_ms": round(duration_ms, 2)}
                 )
-                from app.models.tracks import ChartResponse
-                return ChartResponse(
-                    chart_type=config.chart_type,
-                    period=str(chart_date) if chart_date else "",
-                    entries=[],
-                    total_plays=0,
-                )
+                raise
+                # return ChartResponse(
+                #     chart_type=config.chart_type,
+                #     period=chart_date.isoformat() if chart_date else "",
+                #     entries=[],
+                #     total_plays=0,
+                # )
                 
             except Exception as e:
                 duration_ms = (time.time() - start_time) * 1000
@@ -89,7 +94,7 @@ def log_chart_operation(config: LogConfig):
         def sync_wrapper(self, *args, **kwargs): 
             log = getattr(self, 'logger', logger)
 
-            chart_date = kwargs.get('chart_date') or (args[0] if args else None)
+            chart_date: date = kwargs.get('chart_date') or (args[0] if args else None)
             limit = kwargs.get('limit') or (args[1] if len(args) > 1 else None)
 
             context = { 
@@ -128,7 +133,8 @@ def log_chart_operation(config: LogConfig):
                     "sync_chart_empty", 
                     **{**context, "error": str(e), "duration_ms": round(duration_ms, 2)}
                 )
-                return {"entries": [], "total_plays": 0}
+                raise
+                # return {"entries": [], "total_plays": 0}
             
             except SQLAlchemyError as e:
                 duration_ms = (time.time() - start_time) * 1000

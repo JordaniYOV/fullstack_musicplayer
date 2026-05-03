@@ -76,4 +76,4 @@ async def get_play_event_service(
 
     return PlayEventService(session=session, redis=redis, kafka_producer=None)
 
-PlayEventServiceDep = Annotated(PlayEventService, Depends(get_play_event_service))
+PlayEventServiceDep = Annotated[PlayEventService, Depends(get_play_event_service)]

@@ -12,7 +12,7 @@ from app.models.play import PlayRequest, PlayResponse
 from app.models.tracks import PlayEvent, Track
 
 
-logger = get_logger("app.service.play_event" service="PlayEventService" engine="psycopg3")
+logger = get_logger("app.service.play_event", service="PlayEventService", engine="psycopg3")
 
 DEDUP_WINDOW_SECONDS: int = 30
 

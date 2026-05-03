@@ -69,7 +69,7 @@ class PlayEventResponse(PlayEventBase):
 
 class DailyTop(SQLModel, table=True): 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    chart_date: datetime = Field(default_factory=datetime.now, nullable=False)
+    chart_date: date = Field(default_factory=date.today(), nullable=False)
     track_id: uuid.UUID = Field(default=None, foreign_key="track.id", ondelete='CASCADE', nullable=False)
     play_count: int = Field(default=0)
     unique_listeners: int = Field(default=0)
@@ -124,7 +124,7 @@ class ChartEntry(BaseModel):
 class ChartResponse(BaseModel): 
     chart_type: str
     period: str
-    generated_at: datetime
+    generated_at: datetime = Field(default_factory=datetime)
     entries: list[ChartEntry]
     total_plays: int
 

@@ -44,7 +44,7 @@ async def record_play(
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed ro record play: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed ro record play: {e}")
     
 @router.get(
     "/play/history", 
@@ -74,7 +74,7 @@ async def get_daily_chart(
     chart_date: Optional[date] = Query(
         default=None,
         description="ISO date (YYYY-MM-DD). Defaults to today", 
-        example="2026-05-01"
+        examples="2026-05-01"
     ), 
     limit: int = Query(default=100, ge=1, le=100),
 ):
@@ -93,10 +93,10 @@ async def get_weekly_chart(
     year_week: Optional[str] = Query(
         default=None, 
         description="ISO year and week (YYYY-Www). Defaults to current week", 
-        example="2026-W18"
+        examples="2026-W18"
     ),
     limit: int = Query(default=100, ge=1, le=100),
-)
+):
     if year_week is None:
         import re 
         if not re.match(r"^\d{4}-W\d{2}$", year_week):
@@ -105,7 +105,7 @@ async def get_weekly_chart(
     service = chart_service(session, redis)
     return await service.get_weekly_chart(year_week=year_week, limit=limit) 
 
-@roter.get(
+@router.get(
     "/monthly", 
     response_model=ChartResponse,
     summary="Monthly top chart", 
@@ -117,7 +117,7 @@ async def get_monthly_chart(
     year_month: Optional[str] = Query(
         default=None, 
         description="Year and month (YYYY-MM). Defaults to current month", 
-        example="2026-05"
+        examples="2026-05"
     ),
     limit: int = Query(default=100, ge=1, le=100),
 ):

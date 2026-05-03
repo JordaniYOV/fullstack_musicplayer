@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import date, datetime, timedelta
 
 from typing import Any, Dict, Optional, Sequence, Tuple
@@ -62,7 +64,7 @@ class ChartServiceAsync:
                 play_count=top.play_count,
                 unique_listeners=top.unique_listeners, 
                 trend=top.trend, 
-                previous_rank = await self.get_previous_rank(top, chart_period, chart_type), 
+                previous_rank = await self.get_previous_rank(track.id, chart_period, chart_type), 
             ))
             
             total_plays += top.play_count
@@ -77,6 +79,7 @@ class ChartServiceAsync:
         """
         if chart_date is None: 
             chart_date = date.today()
+            
         cached_data = await self.cache.get_daily_chart(chart_date)
         if cached_data:
             self.logger.info(
@@ -97,7 +100,8 @@ class ChartServiceAsync:
         query = (select(DailyTop, Track)
                 .join(Track, DailyTop.track_id == Track.id)
                 .where(DailyTop.chart_date == chart_date)
-                .limit(limit=limit)
+                .order_by(DailyTop.rank_position)
+                .limit(limit)
             )
         
         result = await self.session.execute(query)
@@ -378,7 +382,7 @@ class ChartServiceAsync:
 
         return stats
     
-    async def get_previous_rank(self, track_id: int, current_date: date, chart_type: str) -> Optional[int]:
+    async def get_previous_rank(self, track_id: uuid.uuid4, current_date: date, chart_type: str) -> Optional[int]:
         """
         Recieve rank position in previous period
         """

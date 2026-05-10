@@ -1,5 +1,4 @@
 from datetime import datetime
-from turtle import up
 from typing import Any, Optional
 import uuid
 from sqlalchemy import update
@@ -25,8 +24,8 @@ class PlayEventService:
             redis: aioredis.Redis,
             kafka_producer: Optional[Any] = None,
     ) -> None:
-        self.session = session,
-        self.redis = redis, 
+        self.session = session
+        self.redis = redis
         self.kafka_producer = kafka_producer
         self.logger = logger.bind(instance_id=id(self))
 
@@ -60,6 +59,7 @@ class PlayEventService:
                 deduplicated=True,
                 message="Duplicate play event - not recorded again."
             )
+        
         try:
             event = await self.persist_event(user_id, payload)
 
@@ -119,14 +119,14 @@ class PlayEventService:
         )
 
         result = await self.session.execute(query)
-        events = list(result.scalars().all())
+        return list(result.scalars().all())
 
     # private helpers
 
     async def get_track(self, track_id: uuid.UUID) -> Optional[Any]:
         result = await self.session.execute(select(Track).where(Track.id == track_id))
 
-        return result.scalar_onre_or_none()
+        return result.scalar_one_or_none()
     
     async def is_duplicate(self, user_id: uuid.UUID, track_id: uuid.UUID) -> bool:
         """
@@ -139,6 +139,7 @@ class PlayEventService:
         key = f"dedup:play:{user_id}:{track_id}"
         try:
             was_set = await self.redis.set(key, 1, ex=DEDUP_WINDOW_SECONDS, nx=True)
+            self.logger.info(f"DEBUG: is_duplicate returned {was_set}") 
             return was_set is None
         except Exception as e:
             self.logger.warning(
@@ -219,7 +220,7 @@ class PlayEventService:
                 # Fire Celery task to recount daily chart for this track
                 from app.tasks.update_popular_tracks import aggregate_daily_task
 
-                await aggregate_daily_task.apply_async(
+                aggregate_daily_task.apply_async(
                     kwargs={"target_date_str": today},
                     queue="aggregation",
                     countdown=5,  

@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import CurrentUser, PlayEventServiceDep, SessionDep, RedisDep
 from app.core.services.charts import ChartServiceAsync
-from app.models.play import PlayResponse, PlayEventPublic
+from app.models.play import PlayRequest, PlayEventPublic
 from app.models.tracks import ChartResponse, TrendingTrack
 
 router = APIRouter(prefix="/charts", tags=["charts"])
@@ -27,17 +27,17 @@ def chart_service(session, redis) -> ChartServiceAsync:
 
 @router.post(
     "/play", 
-    response_model=PlayResponse, 
+    response_model=PlayRequest, 
     summary="Record a play event", 
     description="Create a new play event for a track. Requires authentication."
 )
 async def record_play(
-    payload: PlayResponse,
+    payload: PlayRequest,
     current_user: CurrentUser, 
     play_service: PlayEventServiceDep,
 ):
     try:
-        return await play_service.record_play(
+        return await play_service.record(
             user_id=current_user.id,
             track_id=payload.track_id,
         )

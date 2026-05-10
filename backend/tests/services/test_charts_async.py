@@ -93,9 +93,8 @@ async def test_get_daily_chart_calculate_on_fly(service, async_session, sample_p
     from app.models.tracks import PlayEvent
     result = await async_session.execute(select(PlayEvent))
     events = result.scalars().all()
-    print(f"Events in DB: {len(events)}")  # ← Должно быть > 0
+    print(f"Events in DB: {len(events)}")  
     
-    # Проверь даты
     for event in sample_plays_events[:3]:
         print(f"Event date: {event.played_at.date()}, today: {today}")
 

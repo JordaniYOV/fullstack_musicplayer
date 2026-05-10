@@ -5,7 +5,7 @@ import sys
 import os
 import uuid
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import AsyncGenerator
 from httpx import ASGITransport, AsyncClient
 
@@ -21,7 +21,7 @@ from alembic import command
 
 TEST_DB_URL = "postgresql+psycopg://postgres:test@localhost:5433/test_charts"
 # TEST_SYNC_DB_URL = "postgres://test:test@localhost:5433/test_charts"
-TEST_REDIS_URL = "redis://localhost:6379/15"
+TEST_REDIS_URL = "redis://localhost:32768"
 
 # @pytest.fixture(scope='session', autouse=True)
 # def db() -> Generator[Session, None, None]: 
@@ -220,7 +220,7 @@ async def sample_plays_events(async_session, sample_tracks):
     from app.models.tracks import PlayEvent
 
     events = []
-    base_time = datetime.utcnow()
+    base_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=12)
 
     for _ in range(100):
         events.append(PlayEvent(

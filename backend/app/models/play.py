@@ -9,7 +9,7 @@ class PlayRequest(BaseModel):
     
     track_id: uuid.UUID
     duration_listened: int = Field(ge=0, description="Seconds the user actually listened")
-    completed: bool = Field(defualt=False, description="True if the user listened to the full track")
+    completed: bool = Field(json_schema_extra={'default': False}, description="True if the user listened to the full track")
 
     @field_validator("duration_listened")
     @classmethod
@@ -24,7 +24,7 @@ class PlayResponse(BaseModel):
     event_id: uuid.UUID
     track_id: uuid.UUID
     recorded_at: datetime
-    deduplicated: bool = Field(default=False, description="True when this play was a duplicate within the dedup window "
+    deduplicated: bool = Field(json_schema_extra={'default': False}, description="True when this play was a duplicate within the dedup window "
                     "and was NOT persisted again.")
     message: str = Field(default="Play event recorded successfully.")
 
@@ -46,5 +46,5 @@ class PlayEventPublic(BaseModel):
     completed: bool
     played_at: datetime
 
-    class Config:
+    class ConfigDict:
         from_attributes = True

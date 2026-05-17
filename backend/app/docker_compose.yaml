@@ -1,0 +1,148 @@
+version: '3.9'
+
+
+services: 
+  postgres: 
+    image: postgres:16-alpine
+    container_name: muse_postgres
+    environment:
+      POSTGRES_DB: &{POSTGRES_DB: -muse}
+      POSTGRES_USER: &{POSTGRES_USER: -postgres}
+      POSTGRES_PASSWORD: &{POSTGRES_PASSWORD: -1234}
+    ports:
+      - "${POSTGRES-PORT:-5432}: 5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-muse}"]
+      interval: 5S
+      timeout: 5S
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - muse_network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: muse_redis
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+    ports:
+      - "${REDIS-PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5S
+      timeout: 3S
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - muse_network
+
+
+  # kafka (kRaft)
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: muse_kafka
+    environment:
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: "broker, controller"
+      KAFKA_CFG_PROCESS_QUORUM_VOTES: "1@kafka:9093"
+
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094"
+      KAFKA_CFG_LISTENERS_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT, EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKACFG_NUM_PARTITIONS: "3"
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_LOG_RETENTION_HOURS: "168"
+
+      KAFKA_CFG_MESSAGE_MAX_BYTES: "1048576"
+      KAFKA_CFG_REPLICA_FETCH_MAX_BYTES: "1048576"
+      ALLOW_PLAINTEXT_LISTENERS: "yes"
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    healthcheck:
+      test: 
+        - "CMD-SHELL"
+        - "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - muse_network
+
+  # Kafka UI (dev tool)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: muse_kafka_ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: muse-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8080:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - muse_network
+    profiles:
+      - dev
+  
+  #Celery worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: muse_celery_worker
+    command: >
+      celery -A app.celery_app worker
+      --loglevel=info
+      --queues=default,aggregation
+      --concurrency=4
+    environment:
+      - ASYNC_DB_URL=postgresql+psycopg://postgres:1234@postgres:5432/muse
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - muse_network
+
+  # ── Celery beat (scheduler) ────────────────────────────────────────────────
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: muse_celery_beat
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - ASYNC_DB_URL=postgresql+psycopg://postgres:1234@postgres:5432/muse
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - muse_network
+ 
+volumes:
+  postgres_data:
+  kafka_data:

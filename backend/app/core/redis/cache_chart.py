@@ -2,14 +2,13 @@
 import redis.asyncio as aioredis
 import redis as syncredis
 import json
-import picologging as logging
 
 from datetime import date, datetime
 from typing import Optional, Any, Dict
+from app.logging_config import get_logger
 
 
-
-logger = logging.getLogger(__name__)
+loggerSync = get_logger("app.core.redis.cache_chart", service="ChartCacheServiceSync", engine="psycopg3")
 
 class ChartCacheServiceSync:
     """
@@ -48,10 +47,10 @@ class ChartCacheServiceSync:
                 self.TTL_DAILY,
                 json.dumps(data, ensure_ascii=False)
             )
-            logger.info(f"Cached daily chart: {chart_date} ({len(entries)} tracks)")
+            loggerSync.info(f"Cached daily chart: {chart_date} ({len(entries)} tracks)")
             return True
         except Exception as e:
-            logger.error(f"Failed to cache daily chart: {e}")
+            loggerSync.error(f"Failed to cache daily chart: {e}")
             return False
         
     def save_weekly_chart(
@@ -77,7 +76,7 @@ class ChartCacheServiceSync:
             self.redis.setex(key, self.TTL_WEEKLY, json.dumps(data, ensure_ascii=False))
             return True
         except Exception as e: 
-            logger.error(f"Failed to cache weekly chart: {e}")
+            loggerSync.error(f"Failed to cache weekly chart: {e}")
             return False
         
     def save_monthly_chart(
@@ -103,7 +102,7 @@ class ChartCacheServiceSync:
             self.redis.setex(key, self.TTL_MONTHLY, json.dumps(data, ensure_ascii=True))
             return True
         except Exception as e:
-            logger.error(f"Failed to cache montly chart: {e}")
+            loggerSync.error(f"Failed to cache montly chart: {e}")
             return False
     
     def invalidate(
@@ -116,8 +115,10 @@ class ChartCacheServiceSync:
             self.redis.delete(key)
             return True
         except Exception as e:
-            logger.error(f"Failed to invalidate cache: {e}")
+            loggerSync.error(f"Failed to invalidate cache: {e}")
             return False
+
+loggerAsync = get_logger("app.core.redis.cache_chart", service="ChartCacheServiceAsync", engine="psycopg3")
 
 class ChartCacheServiceAsync:
     """
@@ -142,7 +143,7 @@ class ChartCacheServiceAsync:
                 return json.loads(data)
             return None
         except Exception as e:
-            logger.error(f"Redis get error: {e}")
+            loggerAsync.error(f"Redis get error: {e}")
             return None
     
     async def get_weekly_chart(
@@ -159,7 +160,7 @@ class ChartCacheServiceAsync:
             data = await self.redis.get(key)
             return json.loads(data) if data else None
         except Exception as e: 
-            logger.error(f"Redis get error: {e}")
+            loggerAsync.error(f"Redis get error: {e}")
             return None
         
     async def get_monthly_chart( 
@@ -172,5 +173,5 @@ class ChartCacheServiceAsync:
             data = await self.redis.get(key)
             return json.loads(data) if data else None
         except Exception as e: 
-            logger.error(f"Redis get error: {e}")
+            loggerAsync.error(f"Redis get error: {e}")
             return None

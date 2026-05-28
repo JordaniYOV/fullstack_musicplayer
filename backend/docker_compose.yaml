@@ -1,28 +1,28 @@
-version: '3.9'
 
-
-services: 
-  postgres: 
+services:
+ 
+  # PostgreSQL  
+  postgres:
     image: postgres:16-alpine
     container_name: muse_postgres
     environment:
-      POSTGRES_DB: &{POSTGRES_DB: -muse}
-      POSTGRES_USER: &{POSTGRES_USER: -postgres}
-      POSTGRES_PASSWORD: &{POSTGRES_PASSWORD: -1234}
+      POSTGRES_DB: ${POSTGRES_DB:-muse}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-1234}
     ports:
-      - "${POSTGRES-PORT:-5432}: 5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-muse}"]
-      interval: 5S
-      timeout: 5S
+      interval: 5s
+      timeout: 5s
       retries: 10
     restart: unless-stopped
     networks:
       - muse_network
-
-  # Redis
+ 
+  # Redis 
   redis:
     image: redis:7-alpine
     container_name: muse_redis
@@ -32,47 +32,49 @@ services:
       --maxmemory-policy allkeys-lru
       --save ""
     ports:
-      - "${REDIS-PORT:-6379}:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5S
-      timeout: 3S
+      interval: 5s
+      timeout: 3s
       retries: 10
     restart: unless-stopped
     networks:
       - muse_network
-
-
-  # kafka (kRaft)
+ 
+  # Kafka (KRaft) 
   kafka:
-    image: bitnami/kafka:3.7
+    image: apache/kafka:latest
     container_name: muse_kafka
     environment:
-      KAFKA_CFG_NODE_ID: "1"
-      KAFKA_CFG_PROCESS_ROLES: "broker, controller"
-      KAFKA_CFG_PROCESS_QUORUM_VOTES: "1@kafka:9093"
-
-      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094"
-      KAFKA_CFG_LISTENERS_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT, EXTERNAL:PLAINTEXT"
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
-
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
-      KAFKACFG_NUM_PARTITIONS: "3"
-      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
-      KAFKA_CFG_LOG_RETENTION_HOURS: "168"
-
-      KAFKA_CFG_MESSAGE_MAX_BYTES: "1048576"
-      KAFKA_CFG_REPLICA_FETCH_MAX_BYTES: "1048576"
-      ALLOW_PLAINTEXT_LISTENERS: "yes"
+      # KRaft settings
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+ 
+      KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,EXTERNAL://localhost:9094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+ 
+      # Topic defaults
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: "3"
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_LOG_RETENTION_HOURS: "168"           
+ 
+      # Performance
+      KAFKA_MESSAGE_MAX_BYTES: "1048576"      
+      KAFKA_REPLICA_FETCH_MAX_BYTES: "1048576"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
     ports:
-      - "9092:9092"
-      - "9094:9094"
+      - "9092:9092"       
+      - "9094:9094"       
     volumes:
-      - kafka_data:/bitnami/kafka
+      - kafka_data:/tmp/kraft-combined-logs
     healthcheck:
-      test: 
+      test:
         - "CMD-SHELL"
         - "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"
       interval: 10s
@@ -82,26 +84,25 @@ services:
     restart: unless-stopped
     networks:
       - muse_network
-
-  # Kafka UI (dev tool)
+ 
+  #  Kafka UI (dev only — comment out in prod) 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: muse_kafka_ui
+    depends_on:
+      kafka:
+        condition: service_healthy
     environment:
       KAFKA_CLUSTERS_0_NAME: muse-local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     ports:
       - "8080:8080"
-    depends_on:
-      kafka:
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - muse_network
     profiles:
-      - dev
-  
-  #Celery worker
+      - dev          
+  # Celery worker 
   celery-worker:
     build:
       context: .
@@ -123,8 +124,8 @@ services:
     restart: unless-stopped
     networks:
       - muse_network
-
-  # ── Celery beat (scheduler) ────────────────────────────────────────────────
+ 
+  #  Celery beat (scheduler)
   celery-beat:
     build:
       context: .
@@ -146,3 +147,7 @@ services:
 volumes:
   postgres_data:
   kafka_data:
+ 
+networks:
+  muse_network:
+    driver: bridge

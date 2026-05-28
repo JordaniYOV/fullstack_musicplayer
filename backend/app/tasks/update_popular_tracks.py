@@ -1,4 +1,3 @@
-import logging
 
 from datetime import date, timedelta
 from typing import Optional
@@ -11,7 +10,7 @@ from app.core.services.charts import ChartServiceSync
 from app.core.redis.redis import sync_redis_client
 from app.core.redis.cache_chart import ChartCacheServiceSync
 from app.core.db import sync_engine
-
+from app.logging_config import get_logger
 # @celery_app.task()
 # def update_list_task(period: str, limit: int): 
 
@@ -44,7 +43,7 @@ from app.core.db import sync_engine
             
     # asyncio.run(update_list())
 
-logger = logging.getLogger(__name__)
+logger = get_logger("celery_tasks")
 
 @celery_app.task(
         bind=True,

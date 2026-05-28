@@ -1,11 +1,10 @@
 import secrets
-import picologging as logging
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_congig = SettingsConfigDict(
+    model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
@@ -26,9 +25,9 @@ class Settings(BaseSettings):
     ASYNC_DB_URL: str = f"postgresql+psycopg://postgres:1234@localhost:1234/muse"
 
     # Redis
-    redis_url: str = "redis://localhost:12345"
+    redis_url: str = "redis://localhost:6379"
     redis_host: str = "localhost"
-    redis_port: int = 12345
+    redis_port: int = 6379
     redis_password: Optional[str] = None
     redis_max_connections: int = 10
     redis_timeout: int = 5
@@ -36,7 +35,7 @@ class Settings(BaseSettings):
     cache_ttl: int = 3600
 
     # Kafka
-    kakfa_bootstrap_servers: str = "localhost:9094"
+    kafka_bootstrap_servers: str = "localhost:9094"
     kafka_consumer_group: str = "muse-backend"
     kafka_startup_timeout: int = 30
 

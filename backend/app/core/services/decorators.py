@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.logging_config import get_logger
-from app.models.tracks import ChartResponse
 
 
 logger = get_logger("app.service.decorators")

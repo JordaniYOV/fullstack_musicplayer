@@ -30,7 +30,7 @@ TOPIC_SPECS: list[TopicSpec] = [
         name=TOPIC_PLAY_EVENTS,
         partitions=6, 
         config={
-            "retenstion.ms": str(7 * 24 * 3600 * 1000), # 7 days
+            "retention.ms": str(7 * 24 * 3600 * 1000), # 7 days
             "cleanup.policy": "delete",
         }
     ), 
@@ -87,16 +87,16 @@ async def auto_create_topics(
  
             results = await admin.create_topics(new_topics, validate_only=False)
  
-            for topic, error in results.items():
-                if error is None or isinstance(error, TopicAlreadyExistsError):
+            for topic, error_code, error_message in results.topic_errors:
+                if error_code == 0 or error_code == 36: # 36 = TopicAlreadyExists
                     logger.info(
                         "kafka_topic_ready",
-                        extra={"topic": topic, "already_existed": error is not None},
+                        extra={"topic": topic, "already_existed": error_message == 36},
                     )
                 else:
                     logger.error(
                         "kafka_topic_create_failed",
-                        extra={"topic": topic, "error": str(error)},
+                        extra={"topic": topic, "error": str(error_message)},
                     )
  
             logger.info(

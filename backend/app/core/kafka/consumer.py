@@ -90,7 +90,7 @@ class KafkaConsumerService:
             self._consumer = AIOKafkaConsumer(
                 *self.subscribed_topics,
                 bootstrap_servers=self._servers,
-                group_id=self._group_id,
+                # group_id=self._group_id,
                 enable_auto_commit=False,
                 auto_offset_reset="earliest",
                 session_timeout_ms=SESSION_TIMEOUT_MS,

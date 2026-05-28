@@ -2,10 +2,10 @@
 import platform
 from celery import Celery
 from celery.schedules import crontab
-from datetime import timedelta
+# from datetime import timedelta
 from .core.config import settings
 
-import asyncio
+# import asyncio
 
 celery_app = Celery(
     "celery_app", 

@@ -62,7 +62,13 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       KAFKA_NUM_PARTITIONS: "3"
       KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
-      KAFKA_LOG_RETENTION_HOURS: "168"           
+      KAFKA_LOG_RETENTION_HOURS: "168"     
+
+      # Tell Kafka to create the internal offsets topic on startup
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"   # speeds up first join
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"      
  
       # Performance
       KAFKA_MESSAGE_MAX_BYTES: "1048576"      

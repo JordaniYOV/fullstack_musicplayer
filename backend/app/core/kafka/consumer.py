@@ -85,12 +85,14 @@ class KafkaConsumerService:
         if not self._handlers:
             logger.warning("kafka_consumer_no_handlers — not starting consumer")
             return
- 
+
+        await asyncio.sleep(5)
+
         try:
             self._consumer = AIOKafkaConsumer(
                 *self.subscribed_topics,
                 bootstrap_servers=self._servers,
-                # group_id=self._group_id,
+                group_id=self._group_id,
                 enable_auto_commit=False,
                 auto_offset_reset="earliest",
                 session_timeout_ms=SESSION_TIMEOUT_MS,

@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # Database (deriver psycopg3 can work async and sync)
     # DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"
     # ASYNC_DB_URL: str = f"postgresql+asyncpg://postgres:1234@localhost:1234/muse"
-    ASYNC_DB_URL: str = f"postgresql+psycopg://postgres:1234@localhost:1234/muse"
+    ASYNC_DB_URL: str = "postgresql+psycopg://postgres:1234@localhost:5431/muse"
 
     # Redis
     redis_url: str = "redis://localhost:6379"

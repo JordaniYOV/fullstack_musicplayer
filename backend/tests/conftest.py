@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import AsyncMock, MagicMock
 import pytest
 import pytest_asyncio
 import sys
@@ -119,6 +120,36 @@ def sync_session(sync_engine):
         session.rollback()
 
 @pytest.fixture
+def mock_kafka_producer():
+    """
+    A mock KafkaProducerService that records calls without hitting a broker.
+    send() returns True by default. Override side_effect in individual tests.
+    """
+
+    producer = MagicMock()
+    producer.send = AsyncMock(return_value=True)
+    producer.start = AsyncMock()
+    producer.stop = AsyncMock()
+    producer.is_healthy = True
+    producer._consecutive_failures = 0
+    producer._circuit_opened_at = None
+    return producer
+
+@pytest.fixture
+def mock_kafka_consumer():
+    """
+    A mock KafkaConsumerService.
+    """
+    consumer = MagicMock()
+    consumer.start = AsyncMock()
+    consumer.stop = AsyncMock()
+    consumer.is_healthy = True
+    consumer.subscribed_topics = ["play-events"]
+    consumer.consume_loop = AsyncMock()
+    return consumer
+    
+
+@pytest.fixture
 async def test_app(async_engine) -> FastAPI:
     """Create test app with override dependecies"""
     from app.main import app
@@ -148,6 +179,9 @@ async def test_app(async_engine) -> FastAPI:
     
     redis.get_async_redis = ovveride_get_async_redis
 
+    app.state.kafka_producer = mock_kafka_producer()
+    app.state.kafka_consumer = mock_kafka_consumer()
+    
     yield app
 
     app.dependency_overrides.clear()
@@ -157,7 +191,7 @@ async def test_app(async_engine) -> FastAPI:
         redis_client = await ovveride_get_async_redis()
         await redis_client.flushdb()
         await redis_client.close()
-    except:
+    except Exception:
         pass
 
 @pytest_asyncio.fixture()

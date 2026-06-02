@@ -86,7 +86,7 @@ class KafkaConsumerService:
             logger.warning("kafka_consumer_no_handlers — not starting consumer")
             return
 
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
 
         try:
             self._consumer = AIOKafkaConsumer(

@@ -34,7 +34,7 @@ def _make_valid_message(
         user_id=user_id or uuid.uuid4(),
         duration_listened=180,
         completed=True,
-        played_at=datetime.now().isoformat(),
+        played_at=datetime.now(),
     )
     return ConsumerMessage(
         topic="play-events",

@@ -31,13 +31,13 @@ class PlayEventDLQMessage(KafkaMessage):
     """
     Wraps a failed play-event message with error context
     """
-    original_message: str
+    original_topic: str
     original_partition: int
     original_offset: int
     raw_value: str 
     error_type: str
-    error_messafge: str
-    failed_at: datetime = Field(default_factory=datetime.now(), description="Timestamp when the message failed processing")
+    error_message: str
+    failed_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the message failed processing")
 
 class UserLikeMessage(KafkaMessage):
     """
@@ -59,5 +59,5 @@ class ChartUpdateMessage(KafkaMessage):
 
     chart_type: str
     period: str
-    tracks: int
-    aggregated_at: datetime = Field(default_factory=datetime.now(), description="Timestamp when the chart was aggregated")
+    tracks_count: int
+    aggregated_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the chart was aggregated")

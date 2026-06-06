@@ -51,7 +51,9 @@ MAX_RECONNECT_ATTEMPTS = 10
 SESSION_TIMEOUT_MS = 30_000
 HEARTBEAT_INTERVAL_MS = 3_000
  
- 
+async def qual_name(handler: HandlerFn) -> str:
+    return getattr(handler, "__qualname__", getattr(handler, "__name__", repr(handler)))
+
 class KafkaConsumerService:
     """
     Manages an AIOKafkaConsumer and dispatches messages to registered handlers.
@@ -73,7 +75,7 @@ class KafkaConsumerService:
         self._handlers[topic] = handler
         logger.info(
             "kafka_handler_registered",
-            extra={"topic": topic, "handler": handler.__qualname__},
+            extra={"topic": topic, "handler": qual_name(handler)},
         )
  
     @property
@@ -228,7 +230,7 @@ class KafkaConsumerService:
                     "partition": msg.partition,
                     "offset": msg.offset,
                     "latency_ms": round(latency_ms, 2),
-                    "handler": handler.__qualname__,
+                    "handler": qual_name(handler),
                 },
             )
         except Exception as exc:
@@ -242,7 +244,7 @@ class KafkaConsumerService:
                     "error_type": type(exc).__name__,
                     "error": str(exc),
                     "latency_ms": round(latency_ms, 2),
-                    "handler": handler.__qualname__,
+                    "handler": qual_name(handler),
                 },
                 exc_info=True,
             )

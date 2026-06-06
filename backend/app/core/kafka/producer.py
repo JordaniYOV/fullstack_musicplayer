@@ -40,16 +40,16 @@ class KafkaProducerService:
             self,
             bootstrap_servers: Optional[str] = None,
     ):
-        self.servers = bootstrap_servers or settings.kafka_bootstrap_servers
-        self.producer: Optional[AIOKafkaProducer] = None
+        self._servers = bootstrap_servers or settings.kafka_bootstrap_servers
+        self._producer: Optional[AIOKafkaProducer] = None
 
-        self.consecutive_failures: int = 0
-        self.circuit_opened_at: Optional[float] = None
+        self._consecutive_failures: int = 0
+        self._circuit_opened_at: Optional[float] = None
 
     async def start(self) -> None:
         try:
-            self.producer = AIOKafkaProducer(
-                bootstrap_servers=self.servers,
+            self._producer = AIOKafkaProducer(
+                bootstrap_servers=self._servers,
                 acks="all",
                 enable_idempotence=True,
                 linger_ms=5,
@@ -59,19 +59,19 @@ class KafkaProducerService:
                 value_serializer=None,
                 key_serializer=None,
             )
-            await self.producer.start()
-            logger.info("Kafka producer started", extra={"bootstrap_servers": self.servers})
+            await self._producer.start()
+            logger.info("Kafka producer started", extra={"bootstrap_servers": self._servers})
         
         except Exception as e:
             logger.error("Failed to start Kafka producer", exc_info=True, extrs={"error": str(e)})
-            self.producer = None
+            self._producer = None
     
     async def stop(self) -> None:
         """Flush pending messages and close the producer."""
-        if self.producer is None:
+        if self._producer is None:
             return
         try:
-            await self.producer.stop()
+            await self._producer.stop()
             logger.info("kafka_producer_stopped")
         except Exception as exc:
             logger.warning(
@@ -79,7 +79,7 @@ class KafkaProducerService:
                 extra={"error": str(exc)},
             )
         finally:
-            self.producer = None
+            self._producer = None
  
     # Public send API
     async def send(
@@ -96,7 +96,7 @@ class KafkaProducerService:
         (circuit open) or all retries were exhausted (message forwarded to DLQ).
         Never raises.
         """
-        if self.producer is None:
+        if self._producer is None:
             logger.warning(
                 "kafka_send_skipped_no_producer",
                 extra={"topic": topic},
@@ -116,7 +116,7 @@ class KafkaProducerService:
         for attempt in range(1, MAX_RETRIES + 1):
             t0 = time.monotonic()
             try:
-                record_metadata = await self.producer.send_and_wait(
+                record_metadata = await self._producer.send_and_wait(
                     topic,
                     value=value,
                     key=key,
@@ -178,7 +178,7 @@ class KafkaProducerService:
                 "topic": topic,
                 "max_retries": MAX_RETRIES,
                 "error": str(last_exc),
-                "circuit_failures": self.consecutive_failures,
+                "circuit_failures": self._consecutive_failures,
             },
         )
         await self.send_to_dlq(topic=topic, value=value, key=key, error=last_exc)
@@ -186,38 +186,38 @@ class KafkaProducerService:
  
     # Circuit breaker helpers
     def is_circuit_open(self) -> bool:
-        if self.circuit_opened_at is None:
+        if self._circuit_opened_at is None:
             return False
-        elapsed = time.monotonic() - self.circuit_opened_at
+        elapsed = time.monotonic() - self._circuit_opened_at
         if elapsed >= CIRCUIT_RESET_SECONDS:
             logger.info("kafka_circuit_half_open")
-            self.circuit_opened_at = None
+            self._circuit_opened_at = None
             return False
         return True
  
     def record_failure(self) -> None:
-        self.consecutive_failures += 1
+        self._consecutive_failures += 1
         if (
-            self.consecutive_failures >= CIRCUIT_OPEN_THRESHOLD
-            and self.circuit_opened_at is None
+            self._consecutive_failures >= CIRCUIT_OPEN_THRESHOLD
+            and self._circuit_opened_at is None
         ):
-            self.circuit_opened_at = time.monotonic()
+            self._circuit_opened_at = time.monotonic()
             logger.error(
                 "kafka_circuit_opened",
                 extra={
-                    "consecutive_failures": self.consecutive_failures,
+                    "consecutive_failures": self._consecutive_failures,
                     "reset_in_seconds": CIRCUIT_RESET_SECONDS,
                 },
             )
  
     def reset_circuit(self) -> None:
-        if self.consecutive_failures > 0:
+        if self._consecutive_failures > 0:
             logger.info(
                 "kafka_circuit_reset",
-                extra={"previous_failures": self.consecutive_failures},
+                extra={"previous_failures": self._consecutive_failures},
             )
-        self.consecutive_failures = 0
-        self.circuit_opened_at = None
+        self._consecutive_failures = 0
+        self._circuit_opened_at = None
 
     # Dead-letter queue
     async def send_to_dlq(
@@ -239,7 +239,7 @@ class KafkaProducerService:
             )
             return
  
-        if self.producer is None:
+        if self._producer is None:
             return
  
         dlq_payload = json.dumps({
@@ -252,7 +252,7 @@ class KafkaProducerService:
         }).encode()
  
         try:
-            await self.producer.send_and_wait(dlq_topic, value=dlq_payload, key=key)
+            await self._producer.send_and_wait(dlq_topic, value=dlq_payload, key=key)
             logger.info(
                 "kafka_dlq_forwarded",
                 extra={"original_topic": topic, "dlq_topic": dlq_topic},
@@ -270,7 +270,7 @@ class KafkaProducerService:
     @property
     def is_healthy(self) -> bool:
         """True if the producer is running and the circuit is closed."""
-        return self.producer is not None and not self.is_circuit_open()
+        return self._producer is not None and not self.is_circuit_open()
  
 kafka_producer: Optional[KafkaProducerService] = None
  

@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     cache_ttl: int = 3600
 
     # Kafka
-    kafka_bootstrap_servers: str = "localhost:9094"
+    kafka_bootstrap_servers: str = "localhost:9092"
     kafka_consumer_group: str = "muse-backend"
     kafka_startup_timeout: int = 30
 

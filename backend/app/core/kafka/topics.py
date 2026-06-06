@@ -11,8 +11,8 @@ from app.logging_config import get_logger
 TOPIC_PLAY_EVENTS = "play-events"
 TOPIC_PLAY_EVENTS_DLQ = "play-events.dlq"
 
-TOPIC_USER_LIKES = "user-events"
-TOPIC_USER_LIKES_DLQ = "user-events.dlq"
+TOPIC_USER_LIKES = "user-likes"
+TOPIC_USER_LIKES_DLQ = "user-likes.dlq"
 
 TOPIC_CHART_UPDATES = "chart-updates"
 

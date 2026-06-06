@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime as dt 
  
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -63,14 +63,13 @@ async def handle_play_event(msg: ConsumerMessage) -> None:
  
     async with _async_session_factory() as session:
         try:
-            import uuid
             play_event = PlayEvent(
-                id=uuid.UUID(event_msg.event_id),
-                track_id=uuid.UUID(event_msg.track_id),
-                user_id=uuid.UUID(event_msg.user_id),
+                id=event_msg.event_id,
+                track_id=event_msg.track_id,
+                user_id=event_msg.user_id,
                 duration_listened=event_msg.duration_listened,
                 completed=event_msg.completed,
-                played_at=datetime.fromisoformat(event_msg.played_at),
+                played_at=event_msg.played_at,
             )
             session.add(play_event)
             await session.commit()

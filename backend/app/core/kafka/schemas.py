@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 
 class KafkaMessage(BaseModel): 
     """Common envelope fields present on every message"""
-    event_id: uuid.uuid4 = Field(default_factory=uuid.uuid4(), description="Unique identifier for the event")
-    produced_at: datetime = Field(default_factory=datetime.now(), description="Timestamp when the event was produced")
+    event_id: uuid.UUID = Field(default_factory=uuid.uuid4, description="Unique identifier for the event")
+    produced_at: datetime = Field(default_factory=datetime.now, description="Timestamp when the event was produced")
     schema_version: int = Field(default = 1)
 
     def to_bytes(self) -> bytes:
@@ -21,8 +21,8 @@ class PlayEventMessage(KafkaMessage):
     Produced by POST /charts/play after a successful play event. 
     Partitioned by track_id so all events for the same track land on the same partition, allowing for efficient aggregation.
     """
-    track_id: uuid.uuid4
-    user_id: uuid.uuid4
+    track_id: uuid.UUID
+    user_id: uuid.UUID
     duration_listened: int 
     completed: bool
     played_at: datetime
@@ -46,8 +46,8 @@ class UserLikeMessage(KafkaMessage):
     entity_type: "track" or "album"
     """
 
-    user_id: uuid.uuid4
-    entity_id: uuid.uuid4
+    user_id: uuid.UUID
+    entity_id: uuid.UUID
     entity_type: str
     action: str
 

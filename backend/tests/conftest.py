@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 from typing import AsyncGenerator
 from httpx import ASGITransport, AsyncClient
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import SQLModel, create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import sessionmaker
@@ -20,9 +20,9 @@ from alembic.config import Config
 from alembic import command
 
 
-TEST_DB_URL = "postgresql+psycopg://postgres:test@localhost:5433/test_charts"
+TEST_DB_URL = "postgresql+psycopg://postgres:1234@localhost:5431/muse"
 # TEST_SYNC_DB_URL = "postgres://test:test@localhost:5433/test_charts"
-TEST_REDIS_URL = "redis://localhost:32768"
+TEST_REDIS_URL = "redis://localhost:6379"
 
 # @pytest.fixture(scope='session', autouse=True)
 # def db() -> Generator[Session, None, None]: 
@@ -71,8 +71,8 @@ async def async_engine():
 
     yield engine
 
-    async with engine.begin() as conn: 
-        await conn.run_sync(SQLModel.metadata.drop_all)
+    # async with engine.begin() as conn: 
+    #     await conn.run_sync(SQLModel.metadata.drop_all)
 
     await engine.dispose()
 

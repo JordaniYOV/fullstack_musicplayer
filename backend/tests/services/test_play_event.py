@@ -12,7 +12,7 @@ from app.models.play import PlayRequest
 from app.models.tracks import PlayEvent, Track
 from app.core.services.play_event import DEDUP_WINDOW_SECONDS, RECOUNT_THRESHOLD
 
-pytestmark = pytest.mark.asyncio
+
 
 @pytest_asyncio.fixture
 async def mock_redis(): 

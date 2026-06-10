@@ -18,8 +18,6 @@ import pytest
 from app.core.kafka.consumer import ConsumerMessage
 from app.core.kafka.schemas import PlayEventMessage
 
-pytestmark = pytest.mark.asyncio
-
 
 # Helpers
 

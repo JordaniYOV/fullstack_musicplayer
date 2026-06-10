@@ -19,6 +19,8 @@ from fastapi import FastAPI
 from alembic.config import Config
 from alembic import command
 
+from app.api.deps import get_db
+
 
 TEST_DB_URL = "postgresql+psycopg://postgres:1234@localhost:5431/muse"
 # TEST_SYNC_DB_URL = "postgres://test:test@localhost:5433/test_charts"
@@ -179,8 +181,8 @@ async def test_app(async_engine) -> FastAPI:
     
     redis.get_async_redis = ovveride_get_async_redis
 
-    app.state.kafka_producer = mock_kafka_producer()
-    app.state.kafka_consumer = mock_kafka_consumer()
+    app.state.kafka_producer = mock_kafka_producer
+    app.state.kafka_consumer = mock_kafka_consumer
     
     yield app
 

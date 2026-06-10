@@ -8,9 +8,6 @@ from app.core.redis.cache_chart import ChartCacheServiceAsync
 from app.core.services.charts import ChartServiceAsync
 from app.models.tracks import ChartResponse
 
-pytestmark = pytest.mark.asyncio
-
-
 @pytest_asyncio.fixture
 async def mock_cache(): 
     cache = AsyncMock()

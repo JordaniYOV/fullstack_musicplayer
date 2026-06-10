@@ -21,8 +21,6 @@ from app.core.kafka.topics import (
     list_topics,
 )
 
-pytestmark = pytest.mark.asyncio
-
 
 #auto_create_topics 
 

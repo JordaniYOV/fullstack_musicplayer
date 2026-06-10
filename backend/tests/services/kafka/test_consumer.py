@@ -16,8 +16,6 @@ from app.core.kafka.consumer import (
     KafkaConsumerService,
 )
 
-pytestmark = pytest.mark.asyncio
-
 
 # Helpers 
 

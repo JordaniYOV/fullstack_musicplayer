@@ -8,7 +8,6 @@ import pytest_asyncio
 
 from app.core.redis.cache_chart import ChartCacheServiceAsync
 
-pytestmark = pytest.mark.asyncio
 
 @pytest_asyncio.fixture
 async def mock_redis(): 

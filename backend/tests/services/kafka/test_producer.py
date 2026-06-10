@@ -21,8 +21,6 @@ from app.core.kafka.producer import (
     CIRCUIT_RESET_SECONDS,
 )
 
-pytestmark = pytest.mark.asyncio
-
 
 # Fixtures 
 

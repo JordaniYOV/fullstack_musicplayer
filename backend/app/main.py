@@ -2,6 +2,8 @@ from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.middleware import LoggingMiddleware
+
 from .core.config import settings
 from .api.main import api_router
 from app.core.redis.redis import get_async_redis, get_sync_redis, close_async_redis, close_sync_redis
@@ -124,6 +126,8 @@ app.add_middleware(
     allow_methods=["*"], 
     allow_headers=["*"],
 )
+
+app.add_middleware(LoggingMiddleware)
 
 app.include_router(api_router)
 

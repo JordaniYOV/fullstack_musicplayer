@@ -1,5 +1,7 @@
 # from __future__ import annotations
-
+"""
+Tests for PlayEventService (without Kafka integration).
+"""
 import uuid
 import pytest
 import pytest_asyncio
@@ -30,7 +32,7 @@ async def service(mock_redis, async_session):
     return PlayEventService(session=async_session, redis=mock_redis, kafka_producer=None)
 
 @pytest_asyncio.fixture
-async def plaн_request(sample_track): 
+async def play_request(sample_track): 
     """A valid PlayRequest for the first sample track."""
     return PlayRequest(
         track_id= sample_track[0].id, 
@@ -38,6 +40,8 @@ async def plaн_request(sample_track):
         completed=False,
     )
     
+
+
 
 async def test_record_play_persists_event(service, sample_tracks, async_session, mock_redis):
     """A normal play creates a PlayEvent row"""
@@ -286,3 +290,4 @@ def test_play_request_allows_zero_duration():
     """Zero duration is valid (counts as a skip)."""
     req = PlayRequest(track_id=uuid.uuid4(), duration_listened=0, completed=False)
     assert req.duration_listened == 0 
+

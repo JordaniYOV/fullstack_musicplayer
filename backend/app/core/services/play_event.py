@@ -192,8 +192,8 @@ class PlayEventService:
             "played_at": event.played_at.isoformat(),
         }
         try:
-            await self.kafka_producer.send_and_wait(
-                "play-events",
+            await self.kafka_producer.send(
+                topic="play-events",
                 value=json.dumps(message).encode(),
                 key=str(payload.track_id).encode(),
             )

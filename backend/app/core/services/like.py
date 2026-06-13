@@ -13,9 +13,6 @@ User.liked_songs  is a JSON column storing a list of track UUID strings.
 User.albums       is a JSON column storing a list of album UUID strings.
 Artist.followers  is an INT counter column.
 
-JSON lists are fine for Phase 4 (single-user lists are small).
-A proper many-to-many join table would be the Phase 5 upgrade path.
-
 All mutations:
   1. Validate the entity exists.
   2. Check for duplicates (idempotent — liking twice is a no-op, not an error).

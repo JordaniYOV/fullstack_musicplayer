@@ -1,5 +1,5 @@
 from app.api.routes.private import album_pr, artist, track_pr, health
-from app.api.routes.public import album_pu, charts, login, track_pu, user
+from app.api.routes.public import album_pu, charts, login, track_pu, user, library, playlists, search
 
 from fastapi import APIRouter
 
@@ -13,6 +13,9 @@ api_router.include_router(track_pu.router)
 api_router.include_router(album_pu.router)
 api_router.include_router(charts.router)
 api_router.include_router(health.router)
+api_router.include_router(library.router)
+api_router.include_router(playlists.router)
+api_router.include_router(search.router)
 
 api_router.include_router(artist.router)
 api_router.include_router(album_pr.router)

@@ -89,22 +89,6 @@ async def delete_me(
     await session.commit()
     return Message(message="Your acc was deleted")
 
-#Subscribes
-@router.patch("/me/follow/{artist_id}")
-async def follow_artist(session: SessionDep, current_user: CurrentUser):
-    return current_user
-
-@router.patch("me/unfollow/{artist_id}")
-async def unfollow_artist(session: SessionDep, current_user: CurrentUser): 
-    return current_user
-
-@router.get("/me/following")
-async def get_following_artist(session: SessionDep, current_user: CurrentUser): 
-    User = User.model_validate(current_user)
-    return User
-
-#Statistic
-
 #Settings
 @router.get("me/settings")
 async def get_current_settings(session: SessionDep, current_user: CurrentUser): 

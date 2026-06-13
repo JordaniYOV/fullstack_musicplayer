@@ -14,7 +14,8 @@ from alembic import context
 ENV = os.getenv("ENV", "development")
 
 DB_URLS = {
-    "development": "postgresql://postgres:1234@localhost:1234/muse", 
+    # "development": "postgresql://postgres:1234@localhost:1234/muse",
+    "development": "postgresql+psycopg://postgres:1234@localhost:5431/muse",
     "test": "postgresql+psycopg://postgres:test@localhost:5433/test_charts", 
     "production": "",
 }

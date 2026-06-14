@@ -285,11 +285,8 @@ class LikeService:
         await self.session.execute(
             update(Artist)
             .where(Artist.id == artist_id)
-            .values(
-                followers=(Artist.followers - 1).cast("integer")
-                if (artist.followers or 0) > 0
-                else 0
-            )
+            .where(Artist.followers > 0)
+            .values(followers=(Artist.followers - 1))
         )
         await self.session.commit()
 

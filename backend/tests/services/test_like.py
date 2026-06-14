@@ -257,11 +257,12 @@ async def test_unfollow_artist_decrements_followers(svc, user, artist, async_ses
 
     result = await async_session.execute(select(Artist).where(Artist.id == artist.id))
     after_follow = result.scalar_one().followers
-
+    print(after_follow)
     await svc.unfollow_artist(user.id, artist.id)
 
     result2 = await async_session.execute(select(Artist).where(Artist.id == artist.id))
     after_unfollow = result2.scalar_one().followers
+    print(after_unfollow)
     assert after_unfollow == after_follow - 1
 
 

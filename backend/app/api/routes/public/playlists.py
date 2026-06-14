@@ -110,8 +110,9 @@ async def list_public_playlists(
 async def get_playlist(
     playlist_id: uuid.UUID,
     session: SessionDep,
-    current_user: Optional[CurrentUser] = None,
+    current_user: CurrentUser,
 ):
+    print(f"useres: {current_user}")
     user_id = current_user.id if current_user else None
     playlist = await _svc(session).get_by_id(
         playlist_id=playlist_id,
@@ -123,6 +124,7 @@ async def get_playlist(
             detail="Playlist not found or access denied",
         )
     return playlist
+
 
 
 # ------------------------------------------------------------------

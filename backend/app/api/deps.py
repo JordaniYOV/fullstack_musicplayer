@@ -1,7 +1,7 @@
 
 from collections.abc import Generator
 from re import A
-from typing import Annotated, AsyncGenerator
+from typing import Annotated, AsyncGenerator, Optional
 
 
 from sqlalchemy.ext.asyncio.session import AsyncSession

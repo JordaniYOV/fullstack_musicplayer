@@ -47,7 +47,7 @@ def event_loop():
     yield loop
     loop.close()
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def async_engine(): 
     """Create async engine for tests"""
     os.environ["ENV"] = 'test'
@@ -58,23 +58,14 @@ async def async_engine():
         poolclass=StaticPool,
     )
 
-    # try:
-    #     alembic_cfg = Config("alembic.ini")
-    #     alembic_cfg.set_main_option("sqlalchemy.url", TEST_DB_URL)
-    #     command.upgrade(alembic_cfg, "head")
-    # except Exception as e:
-    #     print(f"Migration error {e}")
-    #     raise
-
-
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
 
     yield engine
 
-    # async with engine.begin() as conn: 
-    #     await conn.run_sync(SQLModel.metadata.drop_all)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
 
     await engine.dispose()
 
@@ -90,9 +81,20 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
     )
 
     async with async_session() as session: 
+    
         yield session
 
         await session.rollback()
+        
+#         await _clean_tables(async_engine)
+   
+# async def _clean_tables(engine):
+#     """Clean all tables data without dropping them"""
+#     async with engine.begin() as conn:
+#         tables = list(SQLModel.metadata.tables.values())
+#         for table in reversed(tables):
+#             await conn.execute(table.delete())
+#         await conn.commit()
 
 @pytest.fixture
 def sync_engine():
@@ -291,3 +293,31 @@ async def sample_plays_events(async_session, sample_tracks):
     await async_session.commit()
     return events
 
+@pytest.fixture
+def sample_users_data(): 
+    """Sample user data for tests"""
+    return [
+        {"email": "temp1@email.com", "password": "1"}, 
+        {"email": "temp2@email.com", "password": "12"}
+    ]
+
+@pytest_asyncio.fixture
+async def sample_users(async_session, sample_users_data): 
+    """Create sample users in DB"""
+    from app.models.users import User
+
+    users = []
+    for data in sample_users_data: 
+        user = User(
+            email=data["email"], 
+            hashed_password=data["password"]
+        )
+        async_session.add(user)
+        users.append(user)
+
+    await async_session.commit()
+
+    for user in users:
+        await async_session.refresh(user)
+
+    return users

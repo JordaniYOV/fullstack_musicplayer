@@ -2,7 +2,8 @@ from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.middleware import LoggingMiddleware
+from app.core.middlewares.logging import LoggingMiddleware
+from app.core.middlewares.rate_limiting import LimitMiddleware
 
 from .core.config import settings
 from .api.main import api_router
@@ -116,7 +117,6 @@ app = FastAPI(
 origins = [
     "http://localhost:6000", 
     "http://localhost:5173",
-    
 ]
 
 app.add_middleware(
@@ -127,6 +127,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(LimitMiddleware)
 app.add_middleware(LoggingMiddleware)
 
 app.include_router(api_router)

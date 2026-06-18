@@ -1,0 +1,53 @@
+# ── Web framework 
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+starlette==0.37.2
+
+# ── Database 
+sqlmodel==0.0.21
+sqlalchemy==2.0.31
+psycopg[binary]==3.1.19          # async driver (psycopg3)
+psycopg2-binary==2.9.9           # sync driver for Celery
+alembic==1.13.2
+
+# ── Validation / settings
+pydantic==2.8.2
+pydantic-settings==2.3.4
+email-validator==2.2.0
+
+# ── Auth 
+PyJWT==2.8.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.3
+
+# ── Redis 
+redis[hiredis]==5.0.7
+
+# ── Celery 
+celery[redis]==5.4.0
+
+# ── Kafka 
+aiokafka==0.11.0
+
+# ── Rate limiting
+limits==5.8.0
+
+# ── Logging 
+structlog==24.2.0
+picologging==0.9.3
+
+# ── Audio processing 
+pydub==0.25.1
+
+# ── HTTP client (tests) 
+httpx==0.27.0
+
+# ── Testing 
+pytest==8.2.2
+pytest-asyncio==0.23.7
+pytest-cov==5.0.0
+anyio[trio]==4.4.0
+
+# ── Dev tools 
+black==24.4.2
+ruff==0.5.0

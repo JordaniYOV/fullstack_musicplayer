@@ -4,12 +4,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+
 class RateLimiter: 
     def __init__(self): 
-        self._store = storage.RedisStorage()
+        self._store = storage.RedisStorage("redis://localhost:6379")
         self._limiter = strategies.MovingWindowRateLimiter(self._store)
         self._limits = {
-            "/": parse("5/min")
+            "/": parse("5/minute")
         }
 
     def get_rule(self, path):
@@ -38,10 +39,15 @@ class RateLimiter:
 
 class LimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app): 
-        super.__init__(app)
+        super().__init__(app)
         self.rate_limiter = RateLimiter()
     
-    def make_key(self, request: Request)
+    def make_key(self, request: Request):
+        
+        if hasattr(request.state, "user_id"):
+            return f"rate:user:{request.state.user_id}:{request.url.path}"
+        
+        return f"rate:ip:{request.client.host}:{request.url.path}"
 
     async def dispatch(self, request: Request, call_next):
         rule = self.rate_limiter.get_rule(request.url.path)
@@ -65,8 +71,8 @@ class LimitMiddleware(BaseHTTPMiddleware):
         
         response = await call_next(request)
         if rule:
-            stats = self.rate_limiter.limiter.get_window_stats(rule, key)
+            stats = self.rate_limiter._limiter.get_window_stats(rule, key)
             response.headers["X-RateLimit-Limit"] = str(rule.amount)
-            response.headers["X-RateLimit-Remaining"] = str(stats.remaining_count)
+            response.headers["X-RateLimit-Remaining"] = str(stats.remaining)
         
         return response

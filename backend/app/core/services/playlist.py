@@ -141,6 +141,7 @@ class PlaylistService:
             .limit(limit)
             .offset(offset)
         )
+        
         playlists = result.scalars().all()
 
         summaries = []

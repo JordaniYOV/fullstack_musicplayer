@@ -1,27 +1,17 @@
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException, UploadFile
 
 from app.core.security import verify_password, get_password_hash
-from app.models.users import UserRegister, UserCreate, UpdatePassword, UserPublic, UserUpdateMe
-from app.core.schemas import Message, Token
+from app.models.users import UpdatePassword, UserPublic, UserUpdateMe
+from app.core.schemas import Message
 from app.api.deps import CurrentUser, SessionDep
 from app.crud import user
+
 router = APIRouter(prefix="/user", tags=["users"])
 
 
 #Profile
-@router.post('/signup', response_model=UserPublic)
-async def register_user(session: SessionDep, user_in: UserRegister) -> Any:
-    User = await user.get_user_by_email(session=session, email=user_in.email)
-    if User: 
-        raise HTTPException(
-            status_code=400, 
-            detail="The user with this email already exists in the system",
-        )    
-    user_create = UserCreate.model_validate(user_in)
-    User = await user.create_user(session=session, user_create=user_create)
-    return User
 
 @router.patch("/me/password", response_model=Message)
 async def update_password_me(

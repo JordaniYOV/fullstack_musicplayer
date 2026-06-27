@@ -6,7 +6,7 @@ from app.core.middlewares.logging import LoggingMiddleware
 from app.core.middlewares.rate_limiting import LimitMiddleware
 
 from .core.config import settings
-from .api.main import api_router
+from .api import all_routes
 from app.core.redis.redis import get_async_redis, get_sync_redis, close_async_redis, close_sync_redis
 from app.core.kafka.topics import auto_create_topics
 from app.core.kafka.producer import KafkaProducerService
@@ -130,7 +130,7 @@ app.add_middleware(
 app.add_middleware(LimitMiddleware)
 app.add_middleware(LoggingMiddleware)
 
-app.include_router(api_router)
+app.include_router(all_routes)
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

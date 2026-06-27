@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from app.core.middleware import LoggingMiddleware, TRACE_ID_HEADER, REQUEST_ID_HEADER
+from app.core.middlewares.logging import LoggingMiddleware, TRACE_ID_HEADER, REQUEST_ID_HEADER
 
 
 # ── Minimal test app ──────────────────────────────────────────────────────────

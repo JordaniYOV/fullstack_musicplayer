@@ -44,7 +44,7 @@ from app.logging_config import get_logger
 
 logger = get_logger("app.api.routes.health", engine="psycopg3")
 
-router = APIRouter(tags=["health"])
+router = APIRouter(tags=["health_private"])
 
 
 _PROCESS_START = time.monotonic()

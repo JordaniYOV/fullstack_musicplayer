@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from sqlmodel import select
 
-from app.models.play import PlayRequest
+from app.schemas.play import PlayRequest
 from app.models.tracks import PlayEvent, Track
 from app.core.services.play_event import DEDUP_WINDOW_SECONDS, RECOUNT_THRESHOLD
 

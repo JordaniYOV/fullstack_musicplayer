@@ -12,7 +12,7 @@ import pytest
 import pytest_asyncio
 
 from app.core.services.play_event import PlayEventService
-from app.models.play import PlayRequest
+from app.schemas.play import PlayRequest
 
 pytestmark = pytest.mark.asyncio
 

@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import CurrentUser, PlayEventServiceDep, SessionDep, RedisDep
 from app.core.services.charts import ChartServiceAsync
-from app.models.play import PlayRequest, PlayEventPublic
+from app.schemas.play import PlayRequest, PlayEventPublic
 from app.models.tracks import ChartResponse, TrendingTrack
 
 router = APIRouter(prefix="/charts", tags=["charts"])

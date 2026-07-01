@@ -1,12 +1,13 @@
 from typing import Any
 
 
-from sqlmodel import Session, select
+from sqlmodel import select
 from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from app.core.security import get_password_hash, verify_password
 
-from app.models.users import User, UserCreate, UserUpdate
+from app.models.users import User
+from app.schemas.user import UserCreate, UserUpdate
 
 async def create_user(*, session: AsyncSession, user_create: UserCreate) -> User: 
     db_obj = User.model_validate(

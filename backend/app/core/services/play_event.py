@@ -7,7 +7,7 @@ from redis import asyncio as aioredis
 from sqlmodel import select
 
 from app.logging_config import get_logger
-from app.models.play import PlayRequest, PlayResponse
+from app.schemas.play import PlayRequest, PlayResponse
 from app.models.tracks import PlayEvent, Track
 
 

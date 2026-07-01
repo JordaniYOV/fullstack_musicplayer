@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, UploadFile
 
 from app.core.security import verify_password, get_password_hash
-from app.models.users import UpdatePassword, UserPublic, UserUpdateMe
+from app.schemas.user import UpdatePassword, UserPublic, UserUpdateMe
 from app.models.token import Message
 from app.api.deps import CurrentUser, SessionDep
 from app.crud import user

@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import SessionDep
-from app.models.artists import Artist
+from app.models.users import ArtistProfile
 from app.models.albums import Album
 from app.models.tracks import Track
 from app.models.search_schemas import ArtistSearchResult, AlbumSearchResult, TrackSearchResult
@@ -49,9 +49,9 @@ class ArtistProfileResponse(BaseModel):
 )
 async def get_artist(artist_id: uuid.UUID, session: SessionDep):
     result = await session.execute(
-        select(Artist)
-        .where(Artist.id == artist_id)
-        .options(selectinload(Artist.albums))
+        select(ArtistProfile)
+        .where(ArtistProfile.id == artist_id)
+        .options(selectinload(ArtistProfile.own_albums))
     )
     artist = result.scalar_one_or_none()
     if artist is None:
@@ -81,7 +81,7 @@ async def get_artist_tracks(
 ):
     # Verify artist exists
     artist_result = await session.execute(
-        select(Artist).where(Artist.id == artist_id)
+        select(ArtistProfile).where(ArtistProfile.id == artist_id)
     )
     if artist_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Artist not found")
@@ -90,7 +90,7 @@ async def get_artist_tracks(
         select(Track)
         .where(Track.artist == (
             await session.execute(
-                select(Artist.name).where(Artist.id == artist_id)
+                select(ArtistProfile.name).where(ArtistProfile.id == artist_id)
             )
         ).scalar_one())
         .order_by(Track.all_time_plays.desc())
@@ -126,7 +126,7 @@ async def get_artist_albums(
     offset: int = Query(default=0, ge=0),
 ):
     artist_result = await session.execute(
-        select(Artist).where(Artist.id == artist_id)
+        select(ArtistProfile).where(ArtistProfile.id == artist_id)
     )
     if artist_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Artist not found")
@@ -163,7 +163,7 @@ async def get_artist_popular_tracks(
     session: SessionDep,
 ):
     artist_result = await session.execute(
-        select(Artist.name).where(Artist.id == artist_id)
+        select(ArtistProfile.name).where(ArtistProfile.id == artist_id)
     )
     artist_name = artist_result.scalar_one_or_none()
     if artist_name is None:

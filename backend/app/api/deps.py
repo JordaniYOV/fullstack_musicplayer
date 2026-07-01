@@ -1,16 +1,19 @@
+import jwt
+import redis.asyncio as aioredis
 
 from typing import Annotated, AsyncGenerator
 
 from sqlalchemy.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
+
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import SecurityScopes
 
-import jwt
-import redis.asyncio as aioredis
 from app.core.db import async_engine
 from app.core.services.play_event import PlayEventService
 from app.models.users import User
-from app.models.token import TokenPayload
+from app.schemas.token import TokenPayload
 from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 from jwt.exceptions import InvalidTokenError
@@ -78,13 +81,21 @@ async def get_current_user(session: SessionDep, token: TokenDep, security_scopes
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Not enough permissions. Required: {required_scopes}"
         )
-
-    user = await session.get(User, token_data.sub)
+    statement = (
+        select(User)
+        .where(User.id == token_data.sub)
+        .options(
+            selectinload(User.artist_profile), 
+            selectinload(User.admin_profile),
+        )
+    )
+    user = await session.execute(statement).scalar_one_or_none()
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    
     return user
 
 
@@ -94,7 +105,7 @@ async def require_admin(
         current_user: Annotated[User, Security(get_current_user, scopes=["admin:users:read"])]
 ) -> User:
     """Ensure user is admin"""
-    if not current_user.is_admin:
+    if not current_user.role == UserRole.ADMIN  or not current_user.admin_profile:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
@@ -105,7 +116,7 @@ async def require_artist(
     current_user: Annotated[User, Security(get_current_user, scopes=["artist:profile:read"])],
 ) -> User:
     """Ensure user is artist or admin."""
-    if current_user.role not in (UserRole.ARTIST, UserRole.ADMIN):
+    if current_user.role != UserRole.Artist or not current_user.artist_profile:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Artist access required",
@@ -118,7 +129,7 @@ async def require_verified_artist(
     """Ensure user is verified artist."""
     if current_user.role == UserRole.ADMIN:
         return current_user
-    if current_user.role != UserRole.ARTIST or not current_user.artist_verified:
+    if current_user.role != UserRole.ARTIST or not current_user.artist_profile.artist_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Verified artist access required",

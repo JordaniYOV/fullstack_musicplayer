@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from app.api.deps import SessionDep
 from app.models.albums import Album, AlbumsCover
-from app.models.artists import Artist
+from app.models.users import ArtistProfile
 from app.crud.track import add_track
 
 router = APIRouter(tags=['tracks_private'])
@@ -32,7 +32,7 @@ async def upload_tracks(
     else:
         cover = await album_cover.read()
         cover_type = album_cover.content_type
-        artist_obj = await session.execute(select(Artist).where(Artist.name == artist_name))
+        artist_obj = await session.execute(select(ArtistProfile).where(ArtistProfile.name == artist_name))
         artist = artist_obj.scalar_one_or_none()
 
         cover = AlbumsCover( 

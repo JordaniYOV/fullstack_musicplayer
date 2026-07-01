@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.crud import user
-from app.models.users import UserRegister, UserCreate, UserPublic
+from app.schemas.user import UserRegister, UserCreate, UserPublic
 from app.api.deps import SessionDep
 
 router = APIRouter()

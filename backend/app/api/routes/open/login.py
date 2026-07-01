@@ -8,7 +8,7 @@ from datetime import timedelta
 from app.crud import user
 from app.api.deps import SessionDep
 from app.crud.user import authenticate
-from app.core.schemas import Token
+from app.models.token import Token
 from app.core import security
 from app.core.config import settings
 

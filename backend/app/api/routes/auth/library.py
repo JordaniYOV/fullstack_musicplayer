@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.services.like import LikeService
-from app.core.schemas import Message
+from app.models.token import Message
 from app.models.search_schemas import TrackSearchResult, AlbumSearchResult
 
 router = APIRouter(prefix="/me", tags=["library"])

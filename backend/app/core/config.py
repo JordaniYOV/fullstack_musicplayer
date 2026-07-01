@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = secrets.token_urlsafe(32)
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM = "HS256"
 
     # Database (deriver psycopg3 can work async and sync)
     # DB_URL: str = f"postgresql+asyncpg://postgres:0508@localhost:5432/music"

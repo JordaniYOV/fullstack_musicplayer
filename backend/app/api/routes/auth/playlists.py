@@ -25,7 +25,7 @@ from app.models.playlist_schemas import (
     PlaylistResponse,
     PlaylistSummary,
 )
-from app.core.schemas import Message
+from app.models.token import Message
 
 router = APIRouter(prefix="/playlists", tags=["playlists"])
 

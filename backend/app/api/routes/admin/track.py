@@ -2,7 +2,7 @@
 from sqlmodel import select
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, UploadFile, File
 # from ....core.redis.redis import redis_client
 
 from app.api.deps import SessionDep

@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import SessionDep
 from app.core.services.search import SearchService, ALL_TYPES
-from app.models.search_schemas import SearchResponse
+from app.schemas.search import SearchResponse
 
 router = APIRouter(tags=["search"])
 

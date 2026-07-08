@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import uuid
 from typing import TYPE_CHECKING
 from datetime import datetime
@@ -60,7 +62,7 @@ class User(UserBase, table=True):
         return self.username
 
 class ArtistProfile(SQLModel, table=True):
-    id: uuid.UUID = Field(dfault_factory=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", unique=True)
     
     artist_name: str = Field(min_length=1, max_length=255)
@@ -80,7 +82,7 @@ class AdminProfile(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", unique=True)
 
-    access_level: int = Field(default=1 description="1=support, 2=moderator, 3=superadmin")
+    access_level: int = Field(default=1,description="1=support, 2=moderator, 3=superadmin")
 
     user: User = Relationship(back_populates="admin_profile", sa_relationship_kwargs={"uselist": False})
 

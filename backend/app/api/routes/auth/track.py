@@ -1,17 +1,17 @@
 import uuid 
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse, Response
 from sqlmodel import select
 
 
-from app.api.deps import SessionDep
+from app.api.deps import SessionDep, get_current_user
 from app.models.tracks import Track, TrackHigh, TrackLow, TrackMedium
 
-router = APIRouter(tags=['track'])
+router = APIRouter(tags=['track'], dependencies=[Depends(get_current_user)])
 
 @router.get('/track/{track_id}/metadata/')
-async def track_metadata(session:SessionDep, track_id: uuid.UUID):
+async def track_metadata(session: SessionDep, track_id: uuid.UUID):
     statement = select(Track).where(Track.id == track_id)
     track_obj = await session.execute(statement)
     track = track_obj.scalar_one_or_none()

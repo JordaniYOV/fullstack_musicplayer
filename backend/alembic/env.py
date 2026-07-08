@@ -1,10 +1,11 @@
 import os
 from logging.config import fileConfig
 from sqlmodel import SQLModel
-from app.models.albums import Album, AlbumsCover, PopularAlbums
-from app.models.artists import Artist
-from app.models.playlists import Playlist
-from app.models.tracks import Track, TrackHigh, TrackLow, TrackMedium, TrendingTrack,PlayEvent, DailyTop, WeeklyTop, MonthlyTop
+from app.models.albums import *
+from app.models.playlists import *
+from app.models.tracks import *
+from app.models.users import *
+from app.models.token import *
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 

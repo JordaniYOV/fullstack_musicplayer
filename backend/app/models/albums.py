@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
-    from .artists import Artist
+    from users import ArtistProfile
     from .tracks import Track
 
 #Album's model
@@ -18,10 +18,11 @@ class AlbumBase(SQLModel):
 #DB model
 class Album(AlbumBase, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    artist_id: uuid.UUID = Field(foreign_key="artist.id", ondelete='CASCADE')
-    artist: "Artist" = Relationship(back_populates="albums")
-    tracks: list["Track"] = Relationship(back_populates="album", cascade_delete=True)
+    artist_id: uuid.UUID = Field(foreign_key="artistprofile.id", ondelete='CASCADE')
     cover_id: uuid.UUID = Field(foreign_key='albumscover.id', ondelete="CASCADE")
+    
+    artist: "ArtistProfile" = Relationship(back_populates="albums")
+    tracks: list["Track"] = Relationship(back_populates="album", cascade_delete=True)
     cover: "AlbumsCover" = Relationship(back_populates="album")
 
 #Album cover table

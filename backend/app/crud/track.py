@@ -11,7 +11,7 @@ from pydub import AudioSegment
 
 
 from app.models.tracks import Track, TrackHigh, TrackLow, TrackMedium
-from app.models.token import Message
+from app.schemas.token import Message
 from .utils import comprese_audio
 
 async def add_track(

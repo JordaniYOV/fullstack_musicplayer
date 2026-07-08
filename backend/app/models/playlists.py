@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
 
 if TYPE_CHECKING:
+    from .users import User
     from .tracks import Track
 
 #Conecting model for tracks in playlists 
@@ -12,6 +13,7 @@ class PlaylistTrack(SQLModel, table=True):
 
     playlist: "Playlist" = Relationship(back_populates="tracks")
     track: "Track" = Relationship(back_populates="playlists")
+    order: int = Field(default=0, description="The order of the track in the playlist")
 
 #Playlist's models
 class PlaylistBase(SQLModel):

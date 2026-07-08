@@ -29,7 +29,6 @@ The HTTP status code mirrors the overall status:
 """
 from __future__ import annotations
 
-import logging
 import time
 from typing import Any
 

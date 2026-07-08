@@ -2,10 +2,7 @@ import os
 import platform
 from celery import Celery
 from celery.schedules import crontab
-# from datetime import timedelta
-from .core.config import settings
 
-# import asyncio
 redis_url = os.getenv('REDIS_URL', 'redis://redis:6379/0')
 
 celery_app = Celery(

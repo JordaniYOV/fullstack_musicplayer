@@ -26,17 +26,15 @@ Query behaviour
 """
 from __future__ import annotations
 
-import logging
-import uuid
 from typing import Optional
 
-from sqlalchemy import or_, select, func
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tracks import Track
 from app.models.albums import Album
-from app.models.artists import Artist
-from app.models.search_schemas import (
+from app.models.users import ArtistProfile
+from app.schemas.search import (
     SearchResponse,
     TrackSearchResult,
     AlbumSearchResult,
@@ -216,14 +214,14 @@ class SearchService:
         pattern = f"%{query}%"
         try:
             result = await self.session.execute(
-                select(Artist)
+                select(ArtistProfile)
                 .where(
                     or_(
-                        Artist.name.ilike(pattern),
-                        Artist.bio.ilike(pattern),
+                        ArtistProfile.name.ilike(pattern),
+                        ArtistProfile.bio.ilike(pattern),
                     )
                 )
-                .order_by(Artist.followers.desc())
+                .order_by(ArtistProfile.followers.desc())
                 .limit(limit)
             )
             artists = result.scalars().all()

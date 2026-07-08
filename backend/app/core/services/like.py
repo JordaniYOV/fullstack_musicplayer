@@ -28,10 +28,10 @@ from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.users import User
+from app.models.users import ArtistProfile, User
 from app.models.tracks import Track
 from app.models.albums import Album
-from app.models.artists import Artist
+from app.models.users import ArtistProfile
 
 from app.logging_config import get_logger
 
@@ -261,9 +261,9 @@ class LikeService:
             return False
 
         await self.session.execute(
-            update(Artist)
-            .where(Artist.id == artist_id)
-            .values(followers=Artist.followers + 1)
+            update(ArtistProfile)
+            .where(ArtistProfile.id == artist_id)
+            .values(followers=ArtistProfile.followers + 1)
         )
         await self.session.commit()
 
@@ -283,10 +283,10 @@ class LikeService:
             return False
 
         await self.session.execute(
-            update(Artist)
-            .where(Artist.id == artist_id)
-            .where(Artist.followers > 0)
-            .values(followers=(Artist.followers - 1))
+            update(ArtistProfile)
+            .where(ArtistProfile.id == artist_id)
+            .where(ArtistProfile.followers > 0)
+            .values(followers=(ArtistProfile.followers - 1))
         )
         await self.session.commit()
 
@@ -330,8 +330,8 @@ class LikeService:
         )
         return user, result.scalar_one_or_none()
 
-    async def _get_artist(self, artist_id: uuid.UUID) -> Optional[Artist]:
+    async def _get_artist(self, artist_id: uuid.UUID) -> Optional[ArtistProfile]:
         result = await self.session.execute(
-            select(Artist).where(Artist.id == artist_id)
+            select(ArtistProfile).where(ArtistProfile.id == artist_id)
         )
         return result.scalar_one_or_none()

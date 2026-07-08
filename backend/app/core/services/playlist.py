@@ -26,7 +26,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.playlists import Playlist, PlaylistTrack, PlaylistCreate, PlaylistUpdate
 from app.models.tracks import Track
-from app.models.playlist_schemas import PlaylistResponse, PlaylistSummary, TrackSummary
+from app.schemas.playlist import PlaylistResponse, PlaylistSummary, TrackSummary
 from app.logging_config import get_logger
 
 logger = get_logger("app.service.playlist", service="PlaylistService", engine="psycopg3")

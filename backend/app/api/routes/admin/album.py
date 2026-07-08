@@ -3,7 +3,7 @@ from sqlmodel import select
 from uuid import UUID 
 
 from app.models.albums import Album, AlbumsCover
-from app.models.token import Message
+from app.schemas.token import Message
 from app.api.deps import SessionDep
 
 router = APIRouter(tags=["album_private"])

@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import uuid
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from datetime import datetime, timedelta, date
 from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field, Relationship, Index
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
+    from .users import ArtistProfile    
     from .albums import Album
     from .playlists import PlaylistTrack
 
@@ -25,11 +28,18 @@ class TrackBase(SQLModel):
 
 class Track(TrackBase, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
+    album_id: uuid.UUID | None = Field(foreign_key="album.id", default=None, ondelete='CASCADE')
+    artist_id: uuid.UUID | None = Field(foreign_key="artistprofile.id", default=None, ondelete='SET NULL')
+    track_low_id: uuid.UUID | None = Field(foreign_key="tracklow.id", default=None, ondelete='SET NULL')
+    track_medium_id: uuid.UUID | None = Field(foreign_key="trackmedium.id", default=None, ondelete='SET NULL')
+    track_high_id: uuid.UUID | None = Field(foreign_key="trackhigh.id", default=None, ondelete='SET NULL')
+
+
+    artist_profile: "ArtistProfile" | None = Relationship(back_populates="own_albums", sa_relationship_kwargs={"uselist": False})
     track_low: "TrackLow" = Relationship(back_populates="track", cascade_delete=True)
     track_medium: "TrackMedium" = Relationship(back_populates="track", cascade_delete=True)
     track_high: "TrackHigh" = Relationship(back_populates="track", cascade_delete=True)
     album: "Album" = Relationship(back_populates="tracks")
-    album_id: uuid.UUID | None = Field(foreign_key="album.id", default=None, ondelete='CASCADE')
     playlists: list["PlaylistTrack"] = Relationship(back_populates="track")
     
 class TrackQualityBase(SQLModel):
@@ -118,8 +128,8 @@ class ChartEntry(BaseModel):
     artist: str
     play_count: int
     unique_listeners: int
-    trend: Optional[int] = Field(None, description="+1 up, -1 down, 0 same, null new")
-    previous_rank: Optional[int] = None
+    trend: int | None = None
+    previous_rank: int | None = None
 
 class ChartResponse(BaseModel): 
     chart_type: str

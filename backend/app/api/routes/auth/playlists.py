@@ -13,19 +13,18 @@ DELETE /playlists/{id}/tracks/{track_id}  Remove track
 from __future__ import annotations
 
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from app.api.deps import CurrentUser, SessionDep
 from app.core.services.playlist import PlaylistService
 from app.models.playlists import PlaylistCreate, PlaylistUpdate
-from app.models.playlist_schemas import (
+from app.schemas.playlist import (
     AddTrackRequest,
     PlaylistResponse,
     PlaylistSummary,
 )
-from app.models.token import Message
+from app.schemas.token import Message
 
 router = APIRouter(prefix="/playlists", tags=["playlists"])
 

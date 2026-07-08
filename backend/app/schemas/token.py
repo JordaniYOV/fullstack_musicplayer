@@ -1,3 +1,5 @@
+from sqlmodel import SQLModel
+
 #schemas for authentification
 class Message(SQLModel):
     message: str

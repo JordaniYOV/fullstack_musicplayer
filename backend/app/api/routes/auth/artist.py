@@ -20,7 +20,7 @@ from app.api.deps import SessionDep
 from app.models.users import ArtistProfile
 from app.models.albums import Album
 from app.models.tracks import Track
-from app.models.search_schemas import ArtistSearchResult, AlbumSearchResult, TrackSearchResult
+from app.schemas.search import AlbumSearchResult, TrackSearchResult
 
 router = APIRouter(prefix="/artists", tags=["artists"])
 

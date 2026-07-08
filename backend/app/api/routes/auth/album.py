@@ -18,8 +18,8 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import SessionDep
 from app.models.albums import Album, PopularAlbums
 from app.models.tracks import Track
-from app.models.search_schemas import AlbumSearchResult, TrackSearchResult
-from app.models.playlist_schemas import TrackSummary
+from app.schemas.search import AlbumSearchResult, TrackSearchResult
+from app.schemas.playlist import TrackSummary
 
 router = APIRouter(prefix="/albums", tags=["albums"])
 

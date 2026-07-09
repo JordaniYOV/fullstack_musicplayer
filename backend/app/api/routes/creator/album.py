@@ -13,7 +13,7 @@ async def create_album(
     # album_data: AlbumCreate,
 ):
     """Create album"""
-    if not current_user.artist_profile:
+    if not current_user.creator_profile:
         raise HTTPException(403, "Artist verification required")
     
     ...

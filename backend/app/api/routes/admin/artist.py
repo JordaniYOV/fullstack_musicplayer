@@ -1,8 +1,9 @@
 from fastapi import APIRouter, UploadFile
 
 from app.api.deps import SessionDep
-from app.models.users import ArtistProfile, UserRole
+from app.models.users import UserRole
 from app.crud.user import get_user_by_email, create_user
+from app.schemas.creator import CreatorProfileCreate
 from app.schemas.user import UserCreate
 
 router = APIRouter(tags=["artist_private"])
@@ -10,12 +11,7 @@ router = APIRouter(tags=["artist_private"])
 @router.post('/add/artist')
 async def add_artist(session: SessionDep,
                     photo: UploadFile, 
-                    email: str,
-                    artist_name: str, 
-                    password: str,
-                    bio: str | None = None, 
-                    monthly_listeners: int = 120,
-                    verified: bool = False,
+                    artist_in: CreatorProfileCreate
 ): 
     """
     Add new Artist

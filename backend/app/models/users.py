@@ -18,6 +18,10 @@ class UserRole(str, Enum):
     ARTIST = "artist"
     ADMIN = "admin"
 
+class CreatorType(str, Enum): 
+    ARTIST = "artist"
+    BAND = "band"
+
 # User's Models
 class UserBase(SQLModel):
     username: str | None = Field(default=None, max_length=255) 
@@ -40,7 +44,7 @@ class User(UserBase, table=True):
     own_playlists: list["Playlist"] = Relationship(back_populates="owner")
     liked_albums: list[uuid.UUID] | None = Field(default=None, sa_column=Column(JSON))
 
-    artist_profile: "ArtistProfile" | None = Relationship(back_populates="user", sa_relationship_kwargs={"uselist": False})
+    creator_profile: "CreatorProfile" | None = Relationship(back_populates="user", sa_relationship_kwargs={"uselist": False})
     admin_profile: "AdminProfile" | None = Relationship(back_populates="user", sa_relationship_kwargs={"uselist": False})
 
     @property 
@@ -61,12 +65,13 @@ class User(UserBase, table=True):
             return self.artist_profile.artist_name or self.username
         return self.username
 
-class ArtistProfile(SQLModel, table=True):
+class CreatorProfile(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", unique=True)
     
     artist_name: str = Field(min_length=1, max_length=255)
     bio: str | None = Field(default=None, max_length=2000)
+    type: CreatorType = Field(default=CreatorType.ARTIST)
 
     verified: bool = False
     verified_at: datetime | None = Field(default=None, description="The date when the artist was verified by an admin")
@@ -76,7 +81,7 @@ class ArtistProfile(SQLModel, table=True):
     followers: int | None = Field(default=0)
 
     own_albums: list["Album"] = Relationship(back_populates="artist", cascade_delete=True)
-    user: User = Relationship(back_populates="artist_profile", sa_relationship_kwargs={"uselist": False})
+    user: User = Relationship(back_populates="creator_profile", sa_relationship_kwargs={"uselist": False})
 
 class AdminProfile(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

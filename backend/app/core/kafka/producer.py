@@ -1,7 +1,7 @@
+import __future__
 import asyncio
 import json
 import time
-from typing import Optional
 
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import KafkaConnectionError, KafkaTimeoutError
@@ -38,13 +38,13 @@ class KafkaProducerService:
 
     def __init__(
             self,
-            bootstrap_servers: Optional[str] = None,
+            bootstrap_servers: str | None = None,
     ):
         self._servers = bootstrap_servers or settings.kafka_bootstrap_servers
-        self._producer: Optional[AIOKafkaProducer] = None
+        self._producer: AIOKafkaProducer | None = None
 
         self._consecutive_failures: int = 0
-        self._circuit_opened_at: Optional[float] = None
+        self._circuit_opened_at: float | None = None
 
     async def start(self) -> None:
         try:
@@ -86,8 +86,8 @@ class KafkaProducerService:
         self,
         topic: str,
         value: bytes,
-        key: Optional[bytes] = None,
-        headers: Optional[list[tuple[str, bytes]]] = None,
+        key: bytes | None = None,
+        headers: list[tuple[str, bytes]] | None = None,
     ) -> bool:
         """
         Send a message to a Kafka topic.
@@ -112,7 +112,7 @@ class KafkaProducerService:
             return False
  
         #Retry loop
-        last_exc: Optional[Exception] = None
+        last_exc: Exception | None = None
         for attempt in range(1, MAX_RETRIES + 1):
             t0 = time.monotonic()
             try:
@@ -224,8 +224,8 @@ class KafkaProducerService:
         self,
         topic: str,
         value: bytes,
-        key: Optional[bytes],
-        error: Optional[Exception],
+        key: bytes | None,
+        error: Exception | None,
     ) -> None:
         """
         Forward a failed message to the dead-letter queue topic.
@@ -272,5 +272,5 @@ class KafkaProducerService:
         """True if the producer is running and the circuit is closed."""
         return self._producer is not None and not self.is_circuit_open()
  
-kafka_producer: Optional[KafkaProducerService] = None
+kafka_producer: KafkaProducerService | None = None
  

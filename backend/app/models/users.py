@@ -7,6 +7,8 @@ from enum import Enum
 from sqlmodel import SQLModel, Field, Relationship, JSON, Column
 from pydantic import EmailStr
 
+from app.schemas.creator import CreatorProfileRequestStatus
+
 if TYPE_CHECKING:
     from .tracks import Track
     from .albums import Album
@@ -69,7 +71,8 @@ class CreatorProfile(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", unique=True)
     
-    artist_name: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    hashed_password: str 
     bio: str | None = Field(default=None, max_length=2000)
     type: CreatorType = Field(default=CreatorType.ARTIST)
 
@@ -82,6 +85,19 @@ class CreatorProfile(SQLModel, table=True):
 
     own_albums: list["Album"] = Relationship(back_populates="artist", cascade_delete=True)
     user: User = Relationship(back_populates="creator_profile", sa_relationship_kwargs={"uselist": False})
+
+class CreatorProfileRequest(SQLModel):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    name: str
+    hashed_password: str
+    email: EmailStr
+    bio: str | None = Field(default=None)
+    type: CreatorType = Field(default=CreatorType.ARTIST)
+    status: CreatorProfileRequestStatus
+    created_at: datetime = Field(default_factory=datetime.now())
+    processed_at: datetime | None = Field(default=None)
+    processed_by: uuid.UUID | None = Field(default=None)
+    rejection_reason: str | None = Field(default=None)
 
 class AdminProfile(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

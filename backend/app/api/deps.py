@@ -3,9 +3,9 @@ import redis.asyncio as aioredis
 
 from typing import Annotated, AsyncGenerator
 
-from sqlalchemy.ext.asyncio.session import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlalchemy import select
 
 from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import SecurityScopes
@@ -45,7 +45,10 @@ reusable_oauth2 = OAuth2PasswordBearer(
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSession(async_engine) as session: 
-        yield session
+        try:
+            yield session
+        finally:
+            await session.rollback()
 
 async def get_redis() -> AsyncGenerator[aioredis.Redis, None]: 
     """
@@ -89,7 +92,7 @@ async def get_current_user(session: SessionDep, token: TokenDep, security_scopes
             selectinload(User.admin_profile),
         )
     )
-    user = await session.execute(statement).scalar_one_or_none()
+    user = await session.exec(statement).all()
     
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -110,7 +113,7 @@ async def require_admin(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required"
         )
-    raise current_user
+    return current_user
 
 async def require_artist(
     current_user: Annotated[User, Security(get_current_user, scopes=["artist:profile:read"])],
@@ -135,6 +138,10 @@ async def require_verified_artist(
             detail="Verified artist access required",
         )
     return current_user
+
+AdminUser = Annotated[User, Depends(require_admin)]
+ArtistUser = Annotated[User, Depends(require_artist)]
+VerifiedArtistUser = Annotated[User, Depends(require_verified_artist)]
 
 async def get_play_event_service(
         session: SessionDep,

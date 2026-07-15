@@ -15,7 +15,6 @@ Usage in main.py:
 """
 from __future__ import annotations
 
-import logging
 import time
 import uuid
 from typing import Callable

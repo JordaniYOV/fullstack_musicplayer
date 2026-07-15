@@ -1,9 +1,16 @@
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.middlewares.logging import LoggingMiddleware
 from app.core.middlewares.rate_limiting import LimitMiddleware
+from app.core.errors import (
+    AppError, UnauthorizedError, NotFoundError,
+    ForbiddenError, ValidationError
+)
 
 from .core.config import settings
 from .api import all_routes
@@ -16,7 +23,7 @@ from app.core.kafka.topics import TOPIC_PLAY_EVENTS
 from app.logging_config import get_logger
 
 
-import sys 
+import sys
 import asyncio
 
 logger = get_logger('app.main')
@@ -131,6 +138,99 @@ app.add_middleware(LimitMiddleware)
 app.add_middleware(LoggingMiddleware)
 
 app.include_router(all_routes)
+
+# Exception handlers
+@app.exception_handler(AppError)
+async def app_exception_handler(request: Request, exc: AppError):
+    """Handler для всех AppError"""
+    logger.error(
+        "app_exception",
+        extra={
+            "trace_id": getattr(request.state, "trace_id", None),
+            "exception": exc.__class__.__name__,
+            "message": exc.message,
+            "details": exc.details
+        },
+        exc_info=True
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.message,
+            "errors": exc.details
+        }
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Handler для HTTPException"""
+    logger.warning(
+        "http_exception",
+        extra={
+            "trace_id": getattr(request.state, "trace_id", None),
+            "status_code": exc.status_code,
+            "detail": exc.detail
+        }
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handler для валидационных ошибок Pydantic"""
+    errors = [
+        {
+            "field": err["loc"][1] if len(err["loc"]) > 1 else "body",
+            "message": err["msg"],
+            "type": err["type"]
+        }
+        for err in exc.errors()
+    ]
+
+    logger.warning(
+        "validation_error",
+        extra={
+            "trace_id": getattr(request.state, "trace_id", None),
+            "errors": errors
+        }
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": "Validation error",
+            "errors": errors
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handler для всех остальных исключений"""
+    logger.error(
+        "general_exception",
+        extra={
+            "trace_id": getattr(request.state, "trace_id", None),
+            "exception": type(exc).__name__,
+            "message": str(exc)
+        },
+        exc_info=True
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "trace_id": getattr(request.state, "trace_id", None)
+        }
+    )
+
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
